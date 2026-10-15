@@ -2,6 +2,12 @@
  * js/canvas.js
  * Moduł zarządzania płótnami: Płótno Główne (Main Canvas) oraz Płótno Podglądu (Overlay Canvas).
  *
+ * KONWENCJA WARSTWY WIZUALNEJ (obowiązuje cały projekt):
+ *  - tło dokumentu jest białe KRYJĄCE (fillStyle #ffffff) — zgodnie z wymaganiem zadania,
+ *  - kanał alfa jest zarezerwowany dla przyszłych warstw i dla eksportu PNG,
+ *  - elementy dekoracyjne (siatka obszaru roboczego, szachownica przezroczystości)
+ *    są rysowane w CSS POD płótnem i NIGDY nie trafiają do tablicy pikseli.
+ *
  * Zastosowano wzorzec dwóch nałożonych na siebie płócien:
  * 1. Main Canvas - białe tło, trwały rysunek.
  * 2. Overlay Canvas - przezroczysty, na wierzchu, do renderowania podglądu (rubberbanding)
@@ -22,30 +28,47 @@ window.PaintCanvas = {
   init(containerEl) {
     this.container = containerEl;
     this.mainCanvas = document.getElementById('canvas-main');
-    this.mainCtx = this.mainCanvas.getContext('2d', { willReadFrequently: true });
+    // Konwencja projektu (kontrakt, nie przypadkowa wartość):
+    //  - alpha: true → kanał alfa dostępny, choć dziś każdy piksel jest kryjący;
+    //    warunek konieczny dla przyszłych warstw i wiernego eksportu PNG.
+    //  - willReadFrequently: true → często czytamy piksele (historia, wiadro).
+    // Tło dokumentu pozostaje BIAŁE KRYJĄCE (wymóg zadania) — patrz clearToWhite().
+    this.mainCtx = this.mainCanvas.getContext('2d', {
+      alpha: true,
+      willReadFrequently: true
+    });
 
     this.overlayCanvas = document.getElementById('canvas-overlay');
     this.overlayCtx = this.overlayCanvas.getContext('2d');
 
-    this.history = new window.PaintHistory(30);
+    // v2: limit kroków ORAZ limit pamięci (64 MiB) — historia nie urośnie w nieskończoność
+    this.history = new window.PaintHistory({ maxSteps: 30, maxBytes: 64 * 1024 * 1024 });
 
     // Ustawienie początkowych wymiarów z białym tłem
     this.setDimensions(window.PaintState.canvasWidth, window.PaintState.canvasHeight);
     this.clearToWhite(false);
-    this.history.reset(this.mainCtx);
+    this.history.reset();
+    this.history.markClean();
   },
 
   /**
-   * Czyści główne płótno do czystej bieli.
+   * Wypełnia kanwę białą KRYJĄCĄ farbą (tło dokumentu).
+   * Uwaga: przy wdrożeniu przezroczystego tła (patrz ETAP_ALFA.md, wariant B)
+   * ta metoda zostaje dla „nowego dokumentu z białym tłem", a obok powstaje
+   * clearTransparent() = clearRect() dla tła przezroczystego.
    */
   clearToWhite(recordHistory = true) {
+    const full = window.PaintRect ? window.PaintRect.full(this.mainCanvas.width, this.mainCanvas.height) : null;
+
+    // v2: transakcja otwarta PRZED pierwszą zmianą pikseli
+    if (recordHistory) this.history.begin(this.mainCtx, full);
+
     this.mainCtx.fillStyle = '#ffffff';
     this.mainCtx.fillRect(0, 0, this.mainCanvas.width, this.mainCanvas.height);
     this.clearOverlay();
 
-    if (recordHistory) {
-      this.history.pushState(this.mainCtx);
-    }
+    // v2: jeśli kanwa była już biała, commit() zwróci false i NIE utworzy kroku
+    if (recordHistory) this.history.commit(this.mainCtx);
   },
 
   /**
@@ -85,6 +108,9 @@ window.PaintCanvas = {
     newWidth = Math.max(10, Math.round(newWidth));
     newHeight = Math.max(10, Math.round(newHeight));
 
+    // v2: begin() MUSI być przed setDimensions(), bo zmiana rozmiaru sama zmienia piksele
+    if (recordHistory) this.history.begin(this.mainCtx, null);
+
     // Kopia zapasowa dotychczasowej zawartości
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = this.mainCanvas.width;
@@ -102,8 +128,9 @@ window.PaintCanvas = {
     // Przerysowanie starej zawartości w lewym górnym rogu
     this.mainCtx.drawImage(tempCanvas, 0, 0);
 
+    // commit() sam wykryje zmianę wymiarów i utworzy krok zmiany geometrii
     if (recordHistory) {
-      this.history.pushState(this.mainCtx);
+      this.history.commit(this.mainCtx);
     }
   },
 
