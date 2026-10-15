@@ -2,6 +2,12 @@
  * js/canvas.js
  * Moduł zarządzania płótnami: Płótno Główne (Main Canvas) oraz Płótno Podglądu (Overlay Canvas).
  *
+ * KONWENCJA WARSTWY WIZUALNEJ (obowiązuje cały projekt):
+ *  - tło dokumentu jest białe KRYJĄCE (fillStyle #ffffff) — zgodnie z wymaganiem zadania,
+ *  - kanał alfa jest zarezerwowany dla przyszłych warstw i dla eksportu PNG,
+ *  - elementy dekoracyjne (siatka obszaru roboczego, szachownica przezroczystości)
+ *    są rysowane w CSS POD płótnem i NIGDY nie trafiają do tablicy pikseli.
+ *
  * Zastosowano wzorzec dwóch nałożonych na siebie płócien:
  * 1. Main Canvas - białe tło, trwały rysunek.
  * 2. Overlay Canvas - przezroczysty, na wierzchu, do renderowania podglądu (rubberbanding)
@@ -22,7 +28,15 @@ window.PaintCanvas = {
   init(containerEl) {
     this.container = containerEl;
     this.mainCanvas = document.getElementById('canvas-main');
-    this.mainCtx = this.mainCanvas.getContext('2d', { willReadFrequently: true });
+    // Konwencja projektu (kontrakt, nie przypadkowa wartość):
+    //  - alpha: true → kanał alfa dostępny, choć dziś każdy piksel jest kryjący;
+    //    warunek konieczny dla przyszłych warstw i wiernego eksportu PNG.
+    //  - willReadFrequently: true → często czytamy piksele (historia, wiadro).
+    // Tło dokumentu pozostaje BIAŁE KRYJĄCE (wymóg zadania) — patrz clearToWhite().
+    this.mainCtx = this.mainCanvas.getContext('2d', {
+      alpha: true,
+      willReadFrequently: true
+    });
 
     this.overlayCanvas = document.getElementById('canvas-overlay');
     this.overlayCtx = this.overlayCanvas.getContext('2d');
@@ -36,7 +50,10 @@ window.PaintCanvas = {
   },
 
   /**
-   * Czyści główne płótno do czystej bieli.
+   * Wypełnia kanwę białą KRYJĄCĄ farbą (tło dokumentu).
+   * Uwaga: przy wdrożeniu przezroczystego tła (patrz ETAP_ALFA.md, wariant B)
+   * ta metoda zostaje dla „nowego dokumentu z białym tłem", a obok powstaje
+   * clearTransparent() = clearRect() dla tła przezroczystego.
    */
   clearToWhite(recordHistory = true) {
     this.mainCtx.fillStyle = '#ffffff';
