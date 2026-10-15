@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paint</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- GÓRNY PASEK MENU (TOPBAR) -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-title">Paint</span>
+      </div>
+
+      <div class="menu-group">
+        <!-- Nowy dokument -->
+        <button id="btn-new-file" class="btn-icon" title="Nowy czysty dokument">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/>
+            <line x1="9" y1="15" x2="15" y2="15"/>
+          </svg>
+          Nowy
+        </button>
+
+        <!-- Otwórz obraz -->
+        <button id="btn-open-file" class="btn-icon" title="Wczytaj obraz z dysku (Ctrl+O)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
+          </svg>
+          Otwórz
+        </button>
+
+        <!-- Zapisz obraz (modal z wyborem PNG/JPG, przezroczystości i jakości) -->
+        <button id="btn-save-file" class="btn-icon" title="Zapisz obraz jako PNG lub JPG (Ctrl+S)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/>
+            <polyline points="7 3 7 8 15 8"/>
+          </svg>
+          Zapisz
+        </button>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Historia: Cofnij / Ponów -->
+      <div class="menu-group">
+        <button id="btn-undo" class="btn-icon disabled" disabled title="Cofnij ostatnią operację (Ctrl+Z)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 14 4 9l5-5"/>
+            <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/>
+          </svg>
+          Cofnij
+        </button>
+
+        <button id="btn-redo" class="btn-icon disabled" disabled title="Ponów cofniętą operację (Ctrl+Y)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m15 14 5-5-5-5"/>
+            <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13"/>
+          </svg>
+          Ponów
+        </button>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Przycisk Wyczyść -->
+      <button id="btn-clear-canvas" class="btn-icon btn-clear" title="Wyczyść całe płótno do bieli">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 6h18"/>
+          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+        </svg>
+        Wyczyść
+      </button>
+
+    </header>
+
+    <!-- GŁÓWNY UKŁAD: TOOLBAR + OBSZAR ROBOCZY + SIDEBAR -->
+    <div class="main-layout">
+      <!-- LEWY PIONOWY PASEK NARZĘDZI (TOOLBAR) -->
+      <nav class="toolbar" aria-label="Narzędzia rysowania">
+        <!-- Ołówek -->
+        <button class="tool-btn active" data-tool="pencil" title="Ołówek – rysowanie odręczne (P)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+            <path d="m15 5 4 4"/>
+          </svg>
+        </button>
+
+        <!-- Gumka -->
+        <button class="tool-btn" data-tool="eraser" title="Gumka – zmazywanie do białego tła (E)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/>
+            <path d="M22 21H7"/>
+            <path d="m5 11 9 9"/>
+          </svg>
+        </button>
+
+        <div class="toolbar-separator"></div>
+
+        <!-- Linia -->
+        <button class="tool-btn" data-tool="line" title="Linia prosta – podgląd na żywo (L)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="19" x2="19" y2="5"/>
+          </svg>
+        </button>
+
+        <!-- Prostokąt -->
+        <button class="tool-btn" data-tool="rect" title="Prostokąt – podgląd na żywo (R)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="2"/>
+          </svg>
+        </button>
+
+        <!-- Elipsa / Okrąg -->
+        <button class="tool-btn" data-tool="ellipse" title="Elipsa / Okrąg – podgląd na żywo (O)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+          </svg>
+        </button>
+
+        <div class="toolbar-separator"></div>
+
+        <!-- Wiadro z farbą -->
+        <button class="tool-btn" data-tool="bucket" title="Wiadro z farbą – wypełnienie obszaru (B / G)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"/>
+            <path d="m5 2 5 5"/>
+            <path d="M2 13h15"/>
+            <path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z"/>
+          </svg>
+        </button>
+      </nav>
+
+      <!-- CENTRALNY OBSZAR (PASEK OPCJI + KANWA) -->
+      <main class="center-area">
+        <!-- GÓRNY PASEK OPCJI NARZĘDZIA (TOOLOPTIONS) -->
+        <div class="tool-options-bar">
+          <div class="tool-options-title">
+            <span id="active-tool-label">Ołówek</span>
+          </div>
+
+          <!-- Opcje: Ołówek -->
+          <div id="opt-pencil" class="opt-section">
+            <div class="control-group">
+              <span class="control-label">Grubość:</span>
+              <input type="range" id="pencil-width-slider" min="1" max="50" value="4">
+              <span id="pencil-width-val" class="control-val">4px</span>
+            </div>
+            <div class="size-presets">
+              <button class="preset-dot-btn pencil-size-preset" data-size="1" title="1 px"><span class="preset-dot" style="width:3px;height:3px;"></span></button>
+              <button class="preset-dot-btn pencil-size-preset" data-size="2" title="2 px"><span class="preset-dot" style="width:5px;height:5px;"></span></button>
+              <button class="preset-dot-btn pencil-size-preset" data-size="4" title="4 px"><span class="preset-dot" style="width:7px;height:7px;"></span></button>
+              <button class="preset-dot-btn pencil-size-preset" data-size="8" title="8 px"><span class="preset-dot" style="width:10px;height:10px;"></span></button>
+              <button class="preset-dot-btn pencil-size-preset" data-size="16" title="16 px"><span class="preset-dot" style="width:14px;height:14px;"></span></button>
+              <button class="preset-dot-btn pencil-size-preset" data-size="24" title="24 px"><span class="preset-dot" style="width:18px;height:18px;"></span></button>
+            </div>
+          </div>
+
+          <!-- Opcje: Gumka -->
+          <div id="opt-eraser" class="opt-section" style="display: none;">
+            <div class="control-group">
+              <span class="control-label">Rozmiar gumki:</span>
+              <input type="range" id="eraser-size-slider" min="4" max="100" value="20">
+              <span id="eraser-size-val" class="control-val">20px</span>
+            </div>
+          </div>
+
+          <!-- Opcje: Linia -->
+          <div id="opt-line" class="opt-section" style="display: none;">
+            <div class="control-group">
+              <span class="control-label">Grubość linii:</span>
+              <input type="range" id="line-width-slider" min="1" max="50" value="4">
+              <span id="line-width-val" class="control-val">4px</span>
+            </div>
+            <div class="segmented">
+              <button class="segmented-btn btn-dash-style active" data-dash="solid" title="Linia ciągła">Ciągła</button>
+              <button class="segmented-btn btn-dash-style" data-dash="dashed" title="Linia przerywana">Przerywana</button>
+              <button class="segmented-btn btn-dash-style" data-dash="dotted" title="Linia kropkowana">Kropkowana</button>
+            </div>
+          </div>
+
+          <!-- Opcje: Kształty (Prostokąt / Elipsa) -->
+          <div id="opt-shape" class="opt-section" style="display: none;">
+            <div class="segmented">
+              <button class="segmented-btn btn-fill-mode active" data-mode="stroke" title="Tylko obrys">Obrys</button>
+              <button class="segmented-btn btn-fill-mode" data-mode="fill" title="Tylko wypełnienie">Wypełnienie</button>
+              <button class="segmented-btn btn-fill-mode" data-mode="both" title="Obrys i wypełnienie">Oba</button>
+            </div>
+            <div id="shape-stroke-controls" style="display: flex; align-items: center; gap: 14px;">
+              <div class="control-group">
+                <span class="control-label">Grubość:</span>
+                <input type="range" id="shape-width-slider" min="1" max="50" value="4">
+                <span id="shape-width-val" class="control-val">4px</span>
+              </div>
+              <div class="segmented">
+                <button class="segmented-btn btn-dash-style active" data-dash="solid" title="Linia ciągła">Ciągła</button>
+                <button class="segmented-btn btn-dash-style" data-dash="dashed" title="Linia przerywana">Przerywana</button>
+                <button class="segmented-btn btn-dash-style" data-dash="dotted" title="Linia kropkowana">Kropkowana</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Opcje: Wiadro -->
+          <div id="opt-bucket" class="opt-section" style="display: none;">
+            <div class="control-group">
+              <span class="control-label">Kolor wypełnienia:</span>
+              <div id="preview-bucket-color" class="bucket-color-chip" title="Kliknij, aby wybrać kolor wypełnienia">
+                <input type="color" id="input-bucket-color" class="hidden-color-input" value="#3b82f6">
+              </div>
+              <code id="hex-bucket-color" class="control-val">#3B82F6</code>
+            </div>
+            <div class="control-group">
+              <span class="control-label">Tolerancja:</span>
+              <input type="range" id="bucket-tol-slider" min="0" max="255" value="32">
+              <span id="bucket-tol-val" class="control-val">32</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- OBSZAR ROBOCZY KANWY (WORKSPACE) -->
+        <div class="workspace">
+          <div id="canvas-stage" class="canvas-container">
+            <!-- Płótno główne: białe tło, trwały rysunek -->
+            <canvas id="canvas-main"></canvas>
+            <!-- Płótno podglądu: przezroczyste, podgląd w trakcie przeciągania myszą -->
+            <canvas id="canvas-overlay"></canvas>
+          </div>
+        </div>
+      </main>
+
+      <!-- PRAWY PANEL BOCZNY (KOLORY + ROZMIAR) -->
+      <aside class="sidebar">
+        <!-- Sekcja Kolorów -->
+        <div class="sidebar-section">
+          <div class="sidebar-header">Kolory</div>
+
+          <!-- Podwójny nakładający się próbnik kolorów -->
+          <div class="color-picker-box">
+            <div class="color-overlap-container">
+              <!-- Próbnik wypełnienia (pod spodem) -->
+              <div id="preview-fill-color" class="swatch-fill" title="Kolor wypełnienia (kliknij, aby aktywować / zmienić)">
+                <input type="color" id="input-fill-color" class="hidden-color-input" value="#3b82f6">
+              </div>
+              <!-- Próbnik obrysu (na wierzchu) -->
+              <div id="preview-stroke-color" class="swatch-stroke active" title="Kolor obrysu (kliknij, aby aktywować / zmienić)">
+                <input type="color" id="input-stroke-color" class="hidden-color-input" value="#8b5cf6">
+              </div>
+            </div>
+
+            <div class="color-info-text">
+              <div id="row-stroke-color" class="color-row active" title="Kliknij, aby wybrać kolor obrysu paletą">
+                <span>Obrys:</span>
+                <code id="hex-stroke-color">#8B5CF6</code>
+              </div>
+              <div id="row-fill-color" class="color-row" title="Kliknij, aby wybrać kolor wypełnienia paletą">
+                <span>Wypełnienie:</span>
+                <code id="hex-fill-color">#3B82F6</code>
+              </div>
+              <div class="color-actions">
+                <button id="btn-swap-colors" class="btn-mini" title="Zamień kolory obrysu i wypełnienia (X)">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m16 3 4 4-4 4"/>
+                    <path d="M20 7H4"/>
+                    <path d="m8 21-4-4 4-4"/>
+                    <path d="M4 17h16"/>
+                  </svg>
+                </button>
+                <button id="btn-reset-colors" class="btn-mini" title="Przywróć domyślne kolory">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                    <path d="M3 3v5h5"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Siatka 25 gotowych kolorów palety -->
+          <div class="color-grid">
+            <button class="color-swatch" data-color="#000000" style="background:#000000;"></button>
+            <button class="color-swatch" data-color="#4b5563" style="background:#4b5563;"></button>
+            <button class="color-swatch" data-color="#9ca3af" style="background:#9ca3af;"></button>
+            <button class="color-swatch" data-color="#e5e7eb" style="background:#e5e7eb;"></button>
+            <button class="color-swatch" data-color="#ffffff" style="background:#ffffff;"></button>
+
+            <button class="color-swatch" data-color="#dc2626" style="background:#dc2626;"></button>
+            <button class="color-swatch" data-color="#ea580c" style="background:#ea580c;"></button>
+            <button class="color-swatch" data-color="#f59e0b" style="background:#f59e0b;"></button>
+            <button class="color-swatch" data-color="#eab308" style="background:#eab308;"></button>
+            <button class="color-swatch" data-color="#84cc16" style="background:#84cc16;"></button>
+
+            <button class="color-swatch" data-color="#16a34a" style="background:#16a34a;"></button>
+            <button class="color-swatch" data-color="#0d9488" style="background:#0d9488;"></button>
+            <button class="color-swatch" data-color="#06b6d4" style="background:#06b6d4;"></button>
+            <button class="color-swatch" data-color="#0284c7" style="background:#0284c7;"></button>
+            <button class="color-swatch" data-color="#2563eb" style="background:#2563eb;"></button>
+
+            <button class="color-swatch" data-color="#4f46e5" style="background:#4f46e5;"></button>
+            <button class="color-swatch" data-color="#7c3aed" style="background:#7c3aed;"></button>
+            <button class="color-swatch" data-color="#9333ea" style="background:#9333ea;"></button>
+            <button class="color-swatch" data-color="#c026d3" style="background:#c026d3;"></button>
+            <button class="color-swatch" data-color="#db2777" style="background:#db2777;"></button>
+
+            <button class="color-swatch" data-color="#78350f" style="background:#78350f;"></button>
+            <button class="color-swatch" data-color="#b45309" style="background:#b45309;"></button>
+            <button class="color-swatch" data-color="#fda4af" style="background:#fda4af;"></button>
+            <button class="color-swatch" data-color="#fed7aa" style="background:#fed7aa;"></button>
+            <button class="color-swatch" data-color="#d9f99d" style="background:#d9f99d;"></button>
+          </div>
+          <div class="palette-hint">Klik: obrys · Shift lub PPM: wypełnienie</div>
+        </div>
+
+        <!-- Sekcja Rozmiaru Kanwy -->
+        <div class="sidebar-section">
+          <div class="sidebar-header">Rozmiar kanwy</div>
+          <div class="size-fields-grid">
+            <div class="input-field-group">
+              <label for="input-canvas-width">Szerokość</label>
+              <input type="number" id="input-canvas-width" class="input-number" value="1024" min="50" max="4096">
+            </div>
+            <div class="input-field-group">
+              <label for="input-canvas-height">Wysokość</label>
+              <input type="number" id="input-canvas-height" class="input-number" value="640" min="50" max="4096">
+            </div>
+          </div>
+          <button id="btn-apply-canvas-size" class="btn-full">Zmień rozmiar</button>
+        </div>
+      </aside>
+    </div>
+
+    <!-- DOLNY PASEK STANU (STATUSBAR) -->
+    <footer class="statusbar">
+      <div class="status-left">
+        <span id="status-tool-hint">Ołówek – rysowanie odręczne (P)</span>
+      </div>
+
+      <div class="status-right">
+        <!-- Pozycja kursora na kanwie -->
+        <span id="status-coords">0, 0 px</span>
+        <!-- Rozmiar kanwy -->
+        <span id="status-dimensions">1024 × 640 px</span>
+
+        <!-- Kontrolki Zoomu -->
+        <div class="zoom-widget">
+          <button id="btn-zoom-out" class="btn-mini" title="Pomniejsz">–</button>
+          <span id="status-zoom">100%</span>
+          <button id="btn-zoom-in" class="btn-mini" title="Powiększ">+</button>
+          <button id="btn-zoom-fit" class="btn-mini" title="Dopasuj do okna">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- MODAL ZAPISU OBRAZU (PNG / JPG Z OPCJAMI) -->
+  <div id="save-modal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/>
+            <polyline points="7 3 7 8 15 8"/>
+          </svg>
+          Zapisz obraz
+        </div>
+        <button id="btn-modal-close" class="modal-close-btn" title="Zamknij (Esc)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Wybór formatu -->
+        <div class="form-group">
+          <label class="form-label">Format pliku:</label>
+          <div class="format-switcher">
+            <button class="btn-save-format active" data-format="png">
+              PNG
+              <span>Bezstratny (opcja przezroczystości)</span>
+            </button>
+            <button class="btn-save-format" data-format="jpg">
+              JPG
+              <span>Stratny (regulacja jakości)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Nazwa pliku -->
+        <div class="form-group">
+          <label for="save-filename" class="form-label">Nazwa pliku:</label>
+          <input type="text" id="save-filename" class="form-input-text" value="rysunek" spellcheck="false">
+        </div>
+
+        <!-- Opcje dla PNG -->
+        <div id="save-png-options" class="format-options-box">
+          <label class="checkbox-label">
+            <input type="checkbox" id="save-opt-transparent">
+            <span>Przezroczyste tło (usuń białe tło)</span>
+          </label>
+          <span class="options-hint">Zamienia białe piksele tła na pełną przezroczystość (kanał alfa = 0). Idealne do ikon, logo i grafik na stronę www.</span>
+        </div>
+
+        <!-- Opcje dla JPG -->
+        <div id="save-jpg-options" class="format-options-box" style="display: none;">
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <label for="save-quality-slider" class="form-label">Jakość kompresji:</label>
+              <span id="save-quality-val" style="font-family: monospace; font-size: 12px; color: var(--accent-hover);">90%</span>
+            </div>
+            <input type="range" id="save-quality-slider" min="10" max="100" value="90">
+          </div>
+          <span class="options-hint">Format JPG nie obsługuje przezroczystości (tło jest zawsze białe). Suwak pozwala zmniejszyć rozmiar pliku kosztem kompresji.</span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btn-modal-cancel" class="btn-icon">Anuluj</button>
+        <button id="btn-modal-confirm" class="btn-icon btn-primary">Pobierz plik</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODULARNE SKRYPTY JAVASCRIPT -->
+  <script src="js/state.js"></script>
+  <script src="js/floodFill.js"></script>
+  <script src="js/history.js"></script>
+  <script src="js/canvas.js"></script>
+  <script src="js/tools.js"></script>
+  <script src="js/fileActions.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

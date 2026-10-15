@@ -1,0 +1,3238 @@
+# Paint Web Application — Kompletny eksport projektu
+
+> **Data wygenerowania:** 2026-10-15   
+> **Liczba plików:** 10
+
+Niniejszy dokument zawiera kompletną strukturę oraz pełną zawartość źródłową wszystkich plików wchodzących w skład projektu aplikacji Paint.
+
+## 1. Struktura katalogów i plików
+
+```text
+paint — kopia/
+├── index.html
+├── style.css
+├── app.js
+└── js/
+    ├── canvas.js
+    ├── fileActions.js
+    ├── floodFill.js
+    ├── history.js
+    ├── state.js
+    ├── tools.js
+    └── ui.js
+```
+
+## 2. Zestawienie i spis treści
+
+| Plik | Rozmiar | Linii kodu | Opis modułu |
+| :--- | :--- | :--- | :--- |
+| [index.html](#plik-indexhtml) | 22.6 KB | 445 | Główna struktura dokumentu HTML, pasek menu, przybornik narzędzi, paleta kolorów, obszar roboczy canvas oraz okna dialogowe. |
+| [style.css](#plik-stylecss) | 17.4 KB | 904 | Arkusze stylów CSS definiujące interfejs użytkownika (motyw aplikacji edytora Paint, układ flex/grid, okna modalne). |
+| [app.js](#plik-appjs) | 0.7 KB | 26 | Główny punkt startowy aplikacji (Entry Point) inicjalizujący moduły, stan oraz nasłuchiwacze zdarzeń. |
+| [js/state.js](#plik-jsstatejs) | 1.4 KB | 43 | Zarządzanie stanem aplikacji (narzędzie, kolory podstawowy/pomocniczy, rozmiar pędzla, powiększenie, warstwy, właściwości rysowania). |
+| [js/canvas.js](#plik-jscanvasjs) | 5.0 KB | 169 | Obsługa płótna HTML5 Canvas, skalowania, siatki pomocniczej, bufora pomocniczego (overlay) oraz przeliczania współrzędnych kursora. |
+| [js/fileActions.js](#plik-jsfileactionsjs) | 5.9 KB | 188 | Operacje na plikach: tworzenie nowego dokumentu, wczytywanie pliku graficznego, eksport/zapis (PNG, JPG), schowek systemowy. |
+| [js/floodFill.js](#plik-jsfloodfilljs) | 3.9 KB | 128 | Implementacja algorytmu wypełniania kolorem (kubełek z farbą / flood fill) operująca na tablicy pikseli ImageData. |
+| [js/history.js](#plik-jshistoryjs) | 2.6 KB | 108 | Zarządzanie historią operacji (kolejki Undo / Redo) oraz zapisywaniem migawek stanu canvasu. |
+| [js/tools.js](#plik-jstoolsjs) | 8.2 KB | 285 | Implementacja logiki narzędzi rysunkowych (ołówek, pędzel, linia, prostokąt, elipsa, gumka, pipeta, tekst itp.). |
+| [js/ui.js](#plik-jsuijs) | 26.1 KB | 758 | Obsługa interfejsu użytkownika (UI), zdarzeń myszy i klawiatury (skróty klawiszowe), paneli bocznych, selektora kolorów oraz menu. |
+
+**Łącznie:** 10 plików, 93.7 KB (95,918 bajtów), 3,054 linii kodu.
+
+---
+
+## 3. Zawartość plików źródłowych
+
+<a id="plik-indexhtml"></a>
+### Plik: [index.html](./index.html)
+
+- **Ścieżka względna:** `index.html`
+- **Liczba linii:** 445
+- **Rozmiar:** 23,133 bajtów (22.6 KB)
+- **Rola modułu:** Główna struktura dokumentu HTML, pasek menu, przybornik narzędzi, paleta kolorów, obszar roboczy canvas oraz okna dialogowe.
+
+```html
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paint</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- GÓRNY PASEK MENU (TOPBAR) -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-title">Paint</span>
+      </div>
+
+      <div class="menu-group">
+        <!-- Nowy dokument -->
+        <button id="btn-new-file" class="btn-icon" title="Nowy czysty dokument">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/>
+            <line x1="9" y1="15" x2="15" y2="15"/>
+          </svg>
+          Nowy
+        </button>
+
+        <!-- Otwórz obraz -->
+        <button id="btn-open-file" class="btn-icon" title="Wczytaj obraz z dysku (Ctrl+O)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
+          </svg>
+          Otwórz
+        </button>
+
+        <!-- Zapisz obraz (modal z wyborem PNG/JPG, przezroczystości i jakości) -->
+        <button id="btn-save-file" class="btn-icon" title="Zapisz obraz jako PNG lub JPG (Ctrl+S)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/>
+            <polyline points="7 3 7 8 15 8"/>
+          </svg>
+          Zapisz
+        </button>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Historia: Cofnij / Ponów -->
+      <div class="menu-group">
+        <button id="btn-undo" class="btn-icon disabled" disabled title="Cofnij ostatnią operację (Ctrl+Z)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 14 4 9l5-5"/>
+            <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/>
+          </svg>
+          Cofnij
+        </button>
+
+        <button id="btn-redo" class="btn-icon disabled" disabled title="Ponów cofniętą operację (Ctrl+Y)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m15 14 5-5-5-5"/>
+            <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13"/>
+          </svg>
+          Ponów
+        </button>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Przycisk Wyczyść -->
+      <button id="btn-clear-canvas" class="btn-icon btn-clear" title="Wyczyść całe płótno do bieli">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 6h18"/>
+          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+        </svg>
+        Wyczyść
+      </button>
+
+    </header>
+
+    <!-- GŁÓWNY UKŁAD: TOOLBAR + OBSZAR ROBOCZY + SIDEBAR -->
+    <div class="main-layout">
+      <!-- LEWY PIONOWY PASEK NARZĘDZI (TOOLBAR) -->
+      <nav class="toolbar" aria-label="Narzędzia rysowania">
+        <!-- Ołówek -->
+        <button class="tool-btn active" data-tool="pencil" title="Ołówek – rysowanie odręczne (P)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+            <path d="m15 5 4 4"/>
+          </svg>
+        </button>
+
+        <!-- Gumka -->
+        <button class="tool-btn" data-tool="eraser" title="Gumka – zmazywanie do białego tła (E)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/>
+            <path d="M22 21H7"/>
+            <path d="m5 11 9 9"/>
+          </svg>
+        </button>
+
+        <div class="toolbar-separator"></div>
+
+        <!-- Linia -->
+        <button class="tool-btn" data-tool="line" title="Linia prosta – podgląd na żywo (L)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="19" x2="19" y2="5"/>
+          </svg>
+        </button>
+
+        <!-- Prostokąt -->
+        <button class="tool-btn" data-tool="rect" title="Prostokąt – podgląd na żywo (R)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="2"/>
+          </svg>
+        </button>
+
+        <!-- Elipsa / Okrąg -->
+        <button class="tool-btn" data-tool="ellipse" title="Elipsa / Okrąg – podgląd na żywo (O)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+          </svg>
+        </button>
+
+        <div class="toolbar-separator"></div>
+
+        <!-- Wiadro z farbą -->
+        <button class="tool-btn" data-tool="bucket" title="Wiadro z farbą – wypełnienie obszaru (B / G)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"/>
+            <path d="m5 2 5 5"/>
+            <path d="M2 13h15"/>
+            <path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z"/>
+          </svg>
+        </button>
+      </nav>
+
+      <!-- CENTRALNY OBSZAR (PASEK OPCJI + KANWA) -->
+      <main class="center-area">
+        <!-- GÓRNY PASEK OPCJI NARZĘDZIA (TOOLOPTIONS) -->
+        <div class="tool-options-bar">
+          <div class="tool-options-title">
+            <span id="active-tool-label">Ołówek</span>
+          </div>
+
+          <!-- Opcje: Ołówek -->
+          <div id="opt-pencil" class="opt-section">
+            <div class="control-group">
+              <span class="control-label">Grubość:</span>
+              <input type="range" id="pencil-width-slider" min="1" max="50" value="4">
+              <span id="pencil-width-val" class="control-val">4px</span>
+            </div>
+            <div class="size-presets">
+              <button class="preset-dot-btn pencil-size-preset" data-size="1" title="1 px"><span class="preset-dot" style="width:3px;height:3px;"></span></button>
+              <button class="preset-dot-btn pencil-size-preset" data-size="2" title="2 px"><span class="preset-dot" style="width:5px;height:5px;"></span></button>
+              <button class="preset-dot-btn pencil-size-preset" data-size="4" title="4 px"><span class="preset-dot" style="width:7px;height:7px;"></span></button>
+              <button class="preset-dot-btn pencil-size-preset" data-size="8" title="8 px"><span class="preset-dot" style="width:10px;height:10px;"></span></button>
+              <button class="preset-dot-btn pencil-size-preset" data-size="16" title="16 px"><span class="preset-dot" style="width:14px;height:14px;"></span></button>
+              <button class="preset-dot-btn pencil-size-preset" data-size="24" title="24 px"><span class="preset-dot" style="width:18px;height:18px;"></span></button>
+            </div>
+          </div>
+
+          <!-- Opcje: Gumka -->
+          <div id="opt-eraser" class="opt-section" style="display: none;">
+            <div class="control-group">
+              <span class="control-label">Rozmiar gumki:</span>
+              <input type="range" id="eraser-size-slider" min="4" max="100" value="20">
+              <span id="eraser-size-val" class="control-val">20px</span>
+            </div>
+          </div>
+
+          <!-- Opcje: Linia -->
+          <div id="opt-line" class="opt-section" style="display: none;">
+            <div class="control-group">
+              <span class="control-label">Grubość linii:</span>
+              <input type="range" id="line-width-slider" min="1" max="50" value="4">
+              <span id="line-width-val" class="control-val">4px</span>
+            </div>
+            <div class="segmented">
+              <button class="segmented-btn btn-dash-style active" data-dash="solid" title="Linia ciągła">Ciągła</button>
+              <button class="segmented-btn btn-dash-style" data-dash="dashed" title="Linia przerywana">Przerywana</button>
+              <button class="segmented-btn btn-dash-style" data-dash="dotted" title="Linia kropkowana">Kropkowana</button>
+            </div>
+          </div>
+
+          <!-- Opcje: Kształty (Prostokąt / Elipsa) -->
+          <div id="opt-shape" class="opt-section" style="display: none;">
+            <div class="segmented">
+              <button class="segmented-btn btn-fill-mode active" data-mode="stroke" title="Tylko obrys">Obrys</button>
+              <button class="segmented-btn btn-fill-mode" data-mode="fill" title="Tylko wypełnienie">Wypełnienie</button>
+              <button class="segmented-btn btn-fill-mode" data-mode="both" title="Obrys i wypełnienie">Oba</button>
+            </div>
+            <div id="shape-stroke-controls" style="display: flex; align-items: center; gap: 14px;">
+              <div class="control-group">
+                <span class="control-label">Grubość:</span>
+                <input type="range" id="shape-width-slider" min="1" max="50" value="4">
+                <span id="shape-width-val" class="control-val">4px</span>
+              </div>
+              <div class="segmented">
+                <button class="segmented-btn btn-dash-style active" data-dash="solid" title="Linia ciągła">Ciągła</button>
+                <button class="segmented-btn btn-dash-style" data-dash="dashed" title="Linia przerywana">Przerywana</button>
+                <button class="segmented-btn btn-dash-style" data-dash="dotted" title="Linia kropkowana">Kropkowana</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Opcje: Wiadro -->
+          <div id="opt-bucket" class="opt-section" style="display: none;">
+            <div class="control-group">
+              <span class="control-label">Kolor wypełnienia:</span>
+              <div id="preview-bucket-color" class="bucket-color-chip" title="Kliknij, aby wybrać kolor wypełnienia">
+                <input type="color" id="input-bucket-color" class="hidden-color-input" value="#3b82f6">
+              </div>
+              <code id="hex-bucket-color" class="control-val">#3B82F6</code>
+            </div>
+            <div class="control-group">
+              <span class="control-label">Tolerancja:</span>
+              <input type="range" id="bucket-tol-slider" min="0" max="255" value="32">
+              <span id="bucket-tol-val" class="control-val">32</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- OBSZAR ROBOCZY KANWY (WORKSPACE) -->
+        <div class="workspace">
+          <div id="canvas-stage" class="canvas-container">
+            <!-- Płótno główne: białe tło, trwały rysunek -->
+            <canvas id="canvas-main"></canvas>
+            <!-- Płótno podglądu: przezroczyste, podgląd w trakcie przeciągania myszą -->
+            <canvas id="canvas-overlay"></canvas>
+          </div>
+        </div>
+      </main>
+
+      <!-- PRAWY PANEL BOCZNY (KOLORY + ROZMIAR) -->
+      <aside class="sidebar">
+        <!-- Sekcja Kolorów -->
+        <div class="sidebar-section">
+          <div class="sidebar-header">Kolory</div>
+
+          <!-- Podwójny nakładający się próbnik kolorów -->
+          <div class="color-picker-box">
+            <div class="color-overlap-container">
+              <!-- Próbnik wypełnienia (pod spodem) -->
+              <div id="preview-fill-color" class="swatch-fill" title="Kolor wypełnienia (kliknij, aby aktywować / zmienić)">
+                <input type="color" id="input-fill-color" class="hidden-color-input" value="#3b82f6">
+              </div>
+              <!-- Próbnik obrysu (na wierzchu) -->
+              <div id="preview-stroke-color" class="swatch-stroke active" title="Kolor obrysu (kliknij, aby aktywować / zmienić)">
+                <input type="color" id="input-stroke-color" class="hidden-color-input" value="#8b5cf6">
+              </div>
+            </div>
+
+            <div class="color-info-text">
+              <div id="row-stroke-color" class="color-row active" title="Kliknij, aby wybrać kolor obrysu paletą">
+                <span>Obrys:</span>
+                <code id="hex-stroke-color">#8B5CF6</code>
+              </div>
+              <div id="row-fill-color" class="color-row" title="Kliknij, aby wybrać kolor wypełnienia paletą">
+                <span>Wypełnienie:</span>
+                <code id="hex-fill-color">#3B82F6</code>
+              </div>
+              <div class="color-actions">
+                <button id="btn-swap-colors" class="btn-mini" title="Zamień kolory obrysu i wypełnienia (X)">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m16 3 4 4-4 4"/>
+                    <path d="M20 7H4"/>
+                    <path d="m8 21-4-4 4-4"/>
+                    <path d="M4 17h16"/>
+                  </svg>
+                </button>
+                <button id="btn-reset-colors" class="btn-mini" title="Przywróć domyślne kolory">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                    <path d="M3 3v5h5"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Siatka 25 gotowych kolorów palety -->
+          <div class="color-grid">
+            <button class="color-swatch" data-color="#000000" style="background:#000000;"></button>
+            <button class="color-swatch" data-color="#4b5563" style="background:#4b5563;"></button>
+            <button class="color-swatch" data-color="#9ca3af" style="background:#9ca3af;"></button>
+            <button class="color-swatch" data-color="#e5e7eb" style="background:#e5e7eb;"></button>
+            <button class="color-swatch" data-color="#ffffff" style="background:#ffffff;"></button>
+
+            <button class="color-swatch" data-color="#dc2626" style="background:#dc2626;"></button>
+            <button class="color-swatch" data-color="#ea580c" style="background:#ea580c;"></button>
+            <button class="color-swatch" data-color="#f59e0b" style="background:#f59e0b;"></button>
+            <button class="color-swatch" data-color="#eab308" style="background:#eab308;"></button>
+            <button class="color-swatch" data-color="#84cc16" style="background:#84cc16;"></button>
+
+            <button class="color-swatch" data-color="#16a34a" style="background:#16a34a;"></button>
+            <button class="color-swatch" data-color="#0d9488" style="background:#0d9488;"></button>
+            <button class="color-swatch" data-color="#06b6d4" style="background:#06b6d4;"></button>
+            <button class="color-swatch" data-color="#0284c7" style="background:#0284c7;"></button>
+            <button class="color-swatch" data-color="#2563eb" style="background:#2563eb;"></button>
+
+            <button class="color-swatch" data-color="#4f46e5" style="background:#4f46e5;"></button>
+            <button class="color-swatch" data-color="#7c3aed" style="background:#7c3aed;"></button>
+            <button class="color-swatch" data-color="#9333ea" style="background:#9333ea;"></button>
+            <button class="color-swatch" data-color="#c026d3" style="background:#c026d3;"></button>
+            <button class="color-swatch" data-color="#db2777" style="background:#db2777;"></button>
+
+            <button class="color-swatch" data-color="#78350f" style="background:#78350f;"></button>
+            <button class="color-swatch" data-color="#b45309" style="background:#b45309;"></button>
+            <button class="color-swatch" data-color="#fda4af" style="background:#fda4af;"></button>
+            <button class="color-swatch" data-color="#fed7aa" style="background:#fed7aa;"></button>
+            <button class="color-swatch" data-color="#d9f99d" style="background:#d9f99d;"></button>
+          </div>
+          <div class="palette-hint">Klik: obrys · Shift lub PPM: wypełnienie</div>
+        </div>
+
+        <!-- Sekcja Rozmiaru Kanwy -->
+        <div class="sidebar-section">
+          <div class="sidebar-header">Rozmiar kanwy</div>
+          <div class="size-fields-grid">
+            <div class="input-field-group">
+              <label for="input-canvas-width">Szerokość</label>
+              <input type="number" id="input-canvas-width" class="input-number" value="1024" min="50" max="4096">
+            </div>
+            <div class="input-field-group">
+              <label for="input-canvas-height">Wysokość</label>
+              <input type="number" id="input-canvas-height" class="input-number" value="640" min="50" max="4096">
+            </div>
+          </div>
+          <button id="btn-apply-canvas-size" class="btn-full">Zmień rozmiar</button>
+        </div>
+      </aside>
+    </div>
+
+    <!-- DOLNY PASEK STANU (STATUSBAR) -->
+    <footer class="statusbar">
+      <div class="status-left">
+        <span id="status-tool-hint">Ołówek – rysowanie odręczne (P)</span>
+      </div>
+
+      <div class="status-right">
+        <!-- Pozycja kursora na kanwie -->
+        <span id="status-coords">0, 0 px</span>
+        <!-- Rozmiar kanwy -->
+        <span id="status-dimensions">1024 × 640 px</span>
+
+        <!-- Kontrolki Zoomu -->
+        <div class="zoom-widget">
+          <button id="btn-zoom-out" class="btn-mini" title="Pomniejsz">–</button>
+          <span id="status-zoom">100%</span>
+          <button id="btn-zoom-in" class="btn-mini" title="Powiększ">+</button>
+          <button id="btn-zoom-fit" class="btn-mini" title="Dopasuj do okna">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- MODAL ZAPISU OBRAZU (PNG / JPG Z OPCJAMI) -->
+  <div id="save-modal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/>
+            <polyline points="7 3 7 8 15 8"/>
+          </svg>
+          Zapisz obraz
+        </div>
+        <button id="btn-modal-close" class="modal-close-btn" title="Zamknij (Esc)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Wybór formatu -->
+        <div class="form-group">
+          <label class="form-label">Format pliku:</label>
+          <div class="format-switcher">
+            <button class="btn-save-format active" data-format="png">
+              PNG
+              <span>Bezstratny (opcja przezroczystości)</span>
+            </button>
+            <button class="btn-save-format" data-format="jpg">
+              JPG
+              <span>Stratny (regulacja jakości)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Nazwa pliku -->
+        <div class="form-group">
+          <label for="save-filename" class="form-label">Nazwa pliku:</label>
+          <input type="text" id="save-filename" class="form-input-text" value="rysunek" spellcheck="false">
+        </div>
+
+        <!-- Opcje dla PNG -->
+        <div id="save-png-options" class="format-options-box">
+          <label class="checkbox-label">
+            <input type="checkbox" id="save-opt-transparent">
+            <span>Przezroczyste tło (usuń białe tło)</span>
+          </label>
+          <span class="options-hint">Zamienia białe piksele tła na pełną przezroczystość (kanał alfa = 0). Idealne do ikon, logo i grafik na stronę www.</span>
+        </div>
+
+        <!-- Opcje dla JPG -->
+        <div id="save-jpg-options" class="format-options-box" style="display: none;">
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <label for="save-quality-slider" class="form-label">Jakość kompresji:</label>
+              <span id="save-quality-val" style="font-family: monospace; font-size: 12px; color: var(--accent-hover);">90%</span>
+            </div>
+            <input type="range" id="save-quality-slider" min="10" max="100" value="90">
+          </div>
+          <span class="options-hint">Format JPG nie obsługuje przezroczystości (tło jest zawsze białe). Suwak pozwala zmniejszyć rozmiar pliku kosztem kompresji.</span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btn-modal-cancel" class="btn-icon">Anuluj</button>
+        <button id="btn-modal-confirm" class="btn-icon btn-primary">Pobierz plik</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODULARNE SKRYPTY JAVASCRIPT (CZYSTY VANILLA JS BEZ BUNDLERA) -->
+  <script src="js/state.js"></script>
+  <script src="js/floodFill.js"></script>
+  <script src="js/history.js"></script>
+  <script src="js/canvas.js"></script>
+  <script src="js/tools.js"></script>
+  <script src="js/fileActions.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
+
+```
+
+---
+
+<a id="plik-stylecss"></a>
+### Plik: [style.css](./style.css)
+
+- **Ścieżka względna:** `style.css`
+- **Liczba linii:** 904
+- **Rozmiar:** 17,771 bajtów (17.4 KB)
+- **Rola modułu:** Arkusze stylów CSS definiujące interfejs użytkownika (motyw aplikacji edytora Paint, układ flex/grid, okna modalne).
+
+```css
+/* ==========================================================================
+   GK PAINT - ARCHITEKTURA STYLÓW (VANILLA CSS)
+   Nowoczesny ciemny motyw (Zinc + Violet Accent) zgodny z wytycznymi UI/UX
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* Paleta kolorów Zinc */
+  --bg-app: #09090b;
+  --bg-panel: #141417;
+  --bg-panel-hover: #1f1f23;
+  --bg-subtle: #1c1c21;
+  --border-color: #27272a;
+  --border-light: #3f3f46;
+
+  /* Akcent fioletowy */
+  --accent-primary: #8b5cf6;
+  --accent-hover: #a78bfa;
+  --accent-glow: rgba(139, 92, 246, 0.25);
+  --accent-active-bg: rgba(139, 92, 246, 0.18);
+
+  /* Typografia */
+  --text-main: #f4f4f5;
+  --text-muted: #a1a1aa;
+  --text-dim: #71717a;
+
+  /* Wymiary elementów */
+  --topbar-height: 48px;
+  --tooloptions-height: 46px;
+  --toolbar-width: 56px;
+  --sidebar-width: 268px;
+  --statusbar-height: 32px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Główny kontener aplikacji */
+#app {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   GÓRNY PASEK MENU (TOPBAR)
+   ========================================================================== */
+.topbar {
+  display: flex;
+  align-items: center;
+  height: var(--topbar-height);
+  background-color: var(--bg-panel);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 14px;
+  gap: 8px;
+  z-index: 20;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  margin-right: 16px;
+  padding-left: 2px;
+}
+
+.brand-title {
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.menu-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.divider {
+  width: 1px;
+  height: 20px;
+  background-color: var(--border-color);
+  margin: 0 6px;
+}
+
+/* Przyciski standardowe w TopBarze */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background-color: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-icon:hover {
+  background-color: var(--bg-panel-hover);
+  color: var(--text-main);
+}
+
+.btn-icon:active {
+  transform: scale(0.97);
+}
+
+.btn-icon.disabled, .btn-icon:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn-clear {
+  color: #f87171;
+}
+
+.btn-clear:hover {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+}
+
+.btn-primary {
+  background-color: var(--accent-primary);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 2px 10px var(--accent-glow);
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-hover);
+  color: #ffffff;
+}
+
+.topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ==========================================================================
+   ŚRODKOWY UKŁAD (TOOLBAR + WORKSPACE + SIDEBAR)
+   ========================================================================== */
+.main-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+/* Lewy pasek narzędzi (Toolbar) */
+.toolbar {
+  width: var(--toolbar-width);
+  background-color: var(--bg-panel);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 6px;
+  z-index: 10;
+}
+
+.tool-btn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background-color: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.tool-btn:hover {
+  background-color: var(--bg-panel-hover);
+  color: var(--text-main);
+}
+
+.tool-btn.active {
+  background-color: var(--accent-active-bg);
+  border-color: rgba(139, 92, 246, 0.5);
+  color: var(--accent-hover);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.2);
+}
+
+.toolbar-separator {
+  width: 24px;
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 6px 0;
+}
+
+/* Główna sekcja robocza (Pasek opcji + Canvas Workspace) */
+.center-area {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+}
+
+/* Górny pasek opcji aktywnego narzędzia (ToolOptions) */
+.tool-options-bar {
+  min-height: var(--tooloptions-height);
+  background-color: rgba(20, 20, 23, 0.85);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 16px;
+  flex-wrap: wrap;
+  z-index: 5;
+}
+
+.tool-options-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--text-main);
+  border-right: 1px solid var(--border-color);
+  padding-right: 14px;
+}
+
+.opt-section {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.control-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.control-val {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--text-main);
+  min-width: 32px;
+}
+
+/* Stylizowane suwaki */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 5px;
+  border-radius: 4px;
+  background: #27272a;
+  outline: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  border: 2px solid #ffffff;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* Presety rozmiarów */
+.size-presets {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.preset-dot-btn {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.preset-dot-btn:hover {
+  background: var(--bg-panel-hover);
+  border-color: var(--border-light);
+}
+
+.preset-dot {
+  border-radius: 50%;
+  background-color: var(--text-muted);
+}
+
+/* Przełączniki segmentowe (Segmented Controls) */
+.segmented {
+  display: inline-flex;
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.segmented-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 5px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.segmented-btn:hover {
+  color: var(--text-main);
+}
+
+.segmented-btn.active {
+  background-color: var(--bg-panel-hover);
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* ==========================================================================
+   OBSZAR ROBOCZY KANWY (WORKSPACE)
+   ========================================================================== */
+.workspace {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  background-color: #121215;
+  background-image: radial-gradient(#26262c 1.2px, transparent 1.2px);
+  background-size: 18px 18px;
+  display: flex;
+  padding: 40px;
+}
+
+.canvas-container {
+  margin: auto;
+  position: relative;
+  background-color: #ffffff;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(0, 0, 0, 0.9);
+  border-radius: 2px;
+  cursor: crosshair;
+  flex-shrink: 0;
+}
+
+.canvas-container.drag-over {
+  outline: 3px dashed var(--accent-primary);
+  outline-offset: 8px;
+}
+
+/* Nałożone na siebie płótna */
+#canvas-main, #canvas-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  /* Wyłączenie rozmycia dwuliniowego przy powiększeniu (zoomie) */
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-crisp-edges;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+#canvas-main {
+  z-index: 1;
+  background-color: #ffffff;
+}
+
+#canvas-overlay {
+  z-index: 2;
+  background-color: transparent;
+}
+
+/* ==========================================================================
+   PRAWY PANEL BOCZNY (KOLORY + ROZMIAR KANWY)
+   ========================================================================== */
+.sidebar {
+  width: var(--sidebar-width);
+  background-color: var(--bg-panel);
+  border-left: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.sidebar-section {
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-header {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+
+/* Podwójny próbnik (Obrys + Wypełnienie jak w MS Paint) */
+.color-picker-box {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.color-overlap-container {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  flex-shrink: 0;
+}
+
+.swatch-fill, .swatch-stroke {
+  position: absolute;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.swatch-fill {
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+}
+
+.swatch-stroke {
+  left: 0;
+  top: 0;
+  z-index: 2;
+}
+
+.swatch-fill.active, .swatch-stroke.active {
+  z-index: 5;
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px var(--accent-primary), 0 6px 18px rgba(0, 0, 0, 0.7);
+  transform: scale(1.04);
+}
+
+.hidden-color-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+
+.color-info-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.color-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.color-row:hover {
+  background-color: var(--bg-panel-hover);
+}
+
+.color-row.active {
+  background-color: var(--accent-active-bg);
+  color: var(--accent-hover);
+}
+
+.color-row.active span {
+  color: var(--accent-hover);
+  font-weight: 600;
+}
+
+.color-row.active code {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.color-row span {
+  color: var(--text-dim);
+}
+
+.color-row code {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--text-main);
+}
+
+/* Chip koloru wiadra w górnym pasku opcji */
+.bucket-color-chip {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  background-color: #3b82f6;
+  transition: transform 0.15s ease;
+}
+
+.bucket-color-chip:hover {
+  transform: scale(1.1);
+}
+
+.color-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* Paleta 25 kolorów w siatce */
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.color-swatch {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.color-swatch:hover {
+  transform: scale(1.15);
+  z-index: 5;
+}
+
+.palette-hint {
+  margin-top: 10px;
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--text-dim);
+}
+
+/* Sekcja zmiany rozmiaru kanwy */
+.size-fields-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.input-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.input-field-group label {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.input-number {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-main);
+  padding: 6px 10px;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  outline: none;
+}
+
+.input-number:focus {
+  border-color: var(--accent-primary);
+}
+
+.btn-full {
+  width: 100%;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-full:hover {
+  background: var(--bg-panel-hover);
+  border-color: var(--border-light);
+}
+
+/* ==========================================================================
+   DOLNY PASEK STANU (STATUSBAR)
+   ========================================================================== */
+.statusbar {
+  height: var(--statusbar-height);
+  background-color: var(--bg-panel);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  font-size: 11px;
+  color: var(--text-dim);
+  z-index: 20;
+}
+
+.status-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+}
+
+.status-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-family: ui-monospace, monospace;
+}
+
+.zoom-widget {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-mini {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.btn-mini:hover {
+  background: var(--bg-panel-hover);
+  color: var(--text-main);
+}
+
+/* ==========================================================================
+   MODAL ZAPISU OBRAZU (SAVE MODAL)
+   ========================================================================== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  z-index: 100;
+  display: none;
+  place-items: center;
+  padding: 20px;
+}
+
+.modal-backdrop.open {
+  display: grid;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 440px;
+  background-color: #18181b;
+  border: 1px solid #27272a;
+  border-radius: 14px;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  animation: modal-pop 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modal-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  transition: all 0.15s ease;
+}
+
+.modal-close-btn:hover {
+  background: var(--bg-panel-hover);
+  color: var(--text-main);
+}
+
+.modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.form-input-text {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-main);
+  padding: 8px 12px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.form-input-text:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.format-switcher {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.btn-save-format {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-subtle);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-save-format span {
+  font-size: 10px;
+  font-weight: normal;
+  color: var(--text-dim);
+}
+
+.btn-save-format:hover {
+  background-color: var(--bg-panel-hover);
+  color: var(--text-main);
+}
+
+.btn-save-format.active {
+  background-color: var(--accent-active-bg);
+  border-color: var(--accent-primary);
+  color: var(--accent-hover);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.format-options-box {
+  background-color: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  accent-color: var(--accent-primary);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.options-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  background-color: var(--bg-panel);
+  border-top: 1px solid var(--border-color);
+}
+
+
+```
+
+---
+
+<a id="plik-appjs"></a>
+### Plik: [app.js](./app.js)
+
+- **Ścieżka względna:** `app.js`
+- **Liczba linii:** 26
+- **Rozmiar:** 708 bajtów (0.7 KB)
+- **Rola modułu:** Główny punkt startowy aplikacji (Entry Point) inicjalizujący moduły, stan oraz nasłuchiwacze zdarzeń.
+
+```javascript
+/**
+ * app.js
+ * Punkt wejściowy aplikacji GK Paint.
+ * Inicjalizuje moduły Canvas i UI po załadowaniu drzewa DOM.
+ */
+
+document.addEventListener('DOMContentLoaded', () => {
+  const stage = document.getElementById('canvas-stage');
+  if (!stage) {
+    console.error('Nie znaleziono kontenera canvas-stage');
+    return;
+  }
+
+  // 1. Inicjalizacja podwójnego płótna i historii
+  window.PaintCanvas.init(stage);
+
+  // 2. Inicjalizacja interfejsu użytkownika, narzędzi i zdarzeń
+  window.PaintUI.init();
+
+  // 3. Dopasowanie widoku do ekranu
+  setTimeout(() => {
+    window.PaintCanvas.fitToScreen();
+  }, 50);
+
+  console.log('Paint zainicjalizowany pomyślnie. Wzorzec dwóch płócien aktywny.');
+});
+
+```
+
+---
+
+<a id="plik-jsstatejs"></a>
+### Plik: [js/state.js](./js/state.js)
+
+- **Ścieżka względna:** `js/state.js`
+- **Liczba linii:** 43
+- **Rozmiar:** 1,425 bajtów (1.4 KB)
+- **Rola modułu:** Zarządzanie stanem aplikacji (narzędzie, kolory podstawowy/pomocniczy, rozmiar pędzla, powiększenie, warstwy, właściwości rysowania).
+
+```javascript
+/**
+ * js/state.js
+ * Centralny stan aplikacji Paint.
+ * Przechowuje aktualnie wybrane narzędzie, kolory, parametry pędzla i kanwy.
+ */
+
+window.PaintState = {
+  // Aktywne narzędzie: 'pencil' | 'eraser' | 'line' | 'rect' | 'ellipse' | 'bucket'
+  currentTool: 'pencil',
+
+  // Kolory
+  strokeColor: '#8b5cf6', // Domyślny kolor obrysu (fioletowy akcent)
+  fillColor: '#3b82f6',   // Domyślny kolor wypełnienia (wyrazisty błękit)
+  activeColorTarget: 'stroke', // 'stroke' | 'fill' – który próbnik jest aktywny dla palety
+
+  // Opcje linii i pędzla
+  lineWidth: 4,           // Grubość linii (1 - 50 px)
+  eraserSize: 20,         // Rozmiar gumki (4 - 100 px)
+  lineDash: 'solid',      // 'solid' | 'dashed' | 'dotted'
+
+  // Opcje kształtów (prostokąt, elipsa)
+  // 'stroke' = tylko obrys, 'fill' = tylko wypełnienie, 'both' = obrys i wypełnienie
+  fillMode: 'stroke',
+
+  // Opcje wiadra (flood fill)
+  tolerance: 32,          // Tolerancja dopasowania koloru (0 - 255)
+
+  // Parametry kanwy
+  canvasWidth: 1024,
+  canvasHeight: 640,
+  zoom: 1,                // Skala podglądu (np. 1 = 100%)
+
+  // Ostatnio użyte kolory w palecie
+  recentColors: [],
+
+  // Zmiana właściwości z powiadomieniem obserwatorów (opcjonalnie)
+  set(key, value) {
+    this[key] = value;
+    if (window.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('paint:statechange', { detail: { key, value } }));
+    }
+  }
+};
+
+```
+
+---
+
+<a id="plik-jscanvasjs"></a>
+### Plik: [js/canvas.js](./js/canvas.js)
+
+- **Ścieżka względna:** `js/canvas.js`
+- **Liczba linii:** 169
+- **Rozmiar:** 5,075 bajtów (5.0 KB)
+- **Rola modułu:** Obsługa płótna HTML5 Canvas, skalowania, siatki pomocniczej, bufora pomocniczego (overlay) oraz przeliczania współrzędnych kursora.
+
+```javascript
+/**
+ * js/canvas.js
+ * Moduł zarządzania płótnami: Płótno Główne (Main Canvas) oraz Płótno Podglądu (Overlay Canvas).
+ *
+ * Zastosowano wzorzec dwóch nałożonych na siebie płócien:
+ * 1. Main Canvas - białe tło, trwały rysunek.
+ * 2. Overlay Canvas - przezroczysty, na wierzchu, do renderowania podglądu (rubberbanding)
+ *    w trakcie przeciągania myszą bez modyfikowania głównego rysunku.
+ */
+
+window.PaintCanvas = {
+  mainCanvas: null,
+  mainCtx: null,
+  overlayCanvas: null,
+  overlayCtx: null,
+  container: null,
+  history: null,
+
+  /**
+   * Inicjalizacja płócien w podanym kontenerze DOM.
+   */
+  init(containerEl) {
+    this.container = containerEl;
+    this.mainCanvas = document.getElementById('canvas-main');
+    this.mainCtx = this.mainCanvas.getContext('2d', { willReadFrequently: true });
+
+    this.overlayCanvas = document.getElementById('canvas-overlay');
+    this.overlayCtx = this.overlayCanvas.getContext('2d');
+
+    this.history = new window.PaintHistory(30);
+
+    // Ustawienie początkowych wymiarów z białym tłem
+    this.setDimensions(window.PaintState.canvasWidth, window.PaintState.canvasHeight);
+    this.clearToWhite(false);
+    this.history.reset(this.mainCtx);
+  },
+
+  /**
+   * Czyści główne płótno do czystej bieli.
+   */
+  clearToWhite(recordHistory = true) {
+    this.mainCtx.fillStyle = '#ffffff';
+    this.mainCtx.fillRect(0, 0, this.mainCanvas.width, this.mainCanvas.height);
+    this.clearOverlay();
+
+    if (recordHistory) {
+      this.history.pushState(this.mainCtx);
+    }
+  },
+
+  /**
+   * Czyści bufor podglądu (overlay).
+   */
+  clearOverlay() {
+    this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
+  },
+
+  /**
+   * Ustawia fizyczne wymiary obu płócien w pikselach.
+   */
+  setDimensions(w, h) {
+    w = Math.max(10, Math.min(8192, Math.round(w)));
+    h = Math.max(10, Math.min(8192, Math.round(h)));
+
+    this.mainCanvas.width = w;
+    this.mainCanvas.height = h;
+
+    this.overlayCanvas.width = w;
+    this.overlayCanvas.height = h;
+
+    this.updateContainerStyle();
+
+    window.PaintState.canvasWidth = w;
+    window.PaintState.canvasHeight = h;
+
+    if (window.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('paint:dimensionschange', { detail: { width: w, height: h } }));
+    }
+  },
+
+  /**
+   * Zmienia rozmiar kanwy z zachowaniem dotychczasowego rysunku.
+   */
+  resize(newWidth, newHeight, recordHistory = true) {
+    newWidth = Math.max(10, Math.round(newWidth));
+    newHeight = Math.max(10, Math.round(newHeight));
+
+    // Kopia zapasowa dotychczasowej zawartości
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = this.mainCanvas.width;
+    tempCanvas.height = this.mainCanvas.height;
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.drawImage(this.mainCanvas, 0, 0);
+
+    // Zmiana wymiarów
+    this.setDimensions(newWidth, newHeight);
+
+    // Wypełnienie nowego obszaru na biało
+    this.mainCtx.fillStyle = '#ffffff';
+    this.mainCtx.fillRect(0, 0, newWidth, newHeight);
+
+    // Przerysowanie starej zawartości w lewym górnym rogu
+    this.mainCtx.drawImage(tempCanvas, 0, 0);
+
+    if (recordHistory) {
+      this.history.pushState(this.mainCtx);
+    }
+  },
+
+  /**
+   * Przelicza współrzędne zdarzenia myszy/wskaźnika (clientX, clientY)
+   * na dokładne współrzędne pikselowe kanwy (uwzględniając skalowanie CSS i zoom).
+   */
+  getCanvasCoords(e) {
+    const rect = this.overlayCanvas.getBoundingClientRect();
+    const scaleX = this.overlayCanvas.width / rect.width;
+    const scaleY = this.overlayCanvas.height / rect.height;
+
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY
+    };
+  },
+
+  /**
+   * Aktualizuje wymiary kontenera z uwzględnieniem poziomu zoomu.
+   */
+  updateContainerStyle() {
+    const z = window.PaintState.zoom;
+    const w = Math.round(this.mainCanvas.width * z);
+    const h = Math.round(this.mainCanvas.height * z);
+
+    this.container.style.width = `${w}px`;
+    this.container.style.height = `${h}px`;
+    this.container.style.minWidth = `${w}px`;
+    this.container.style.minHeight = `${h}px`;
+  },
+
+  /**
+   * Zmienia współczynnik powiększenia (zoom).
+   */
+  setZoom(z) {
+    const clamped = Math.max(0.1, Math.min(10, z));
+    window.PaintState.zoom = clamped;
+    this.updateContainerStyle();
+
+    if (window.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('paint:zoomchange', { detail: { zoom: clamped } }));
+    }
+  },
+
+  /**
+   * Automatycznie dopasowuje zoom, aby cała kanwa zmieściła się w oknie roboczym.
+   */
+  fitToScreen() {
+    const workspace = this.container.parentElement;
+    if (!workspace) return;
+
+    const pad = 80;
+    const availW = workspace.clientWidth - pad;
+    const availH = workspace.clientHeight - pad;
+
+    const scaleX = availW / this.mainCanvas.width;
+    const scaleY = availH / this.mainCanvas.height;
+    const fitScale = Math.min(1, Math.min(scaleX, scaleY));
+
+    this.setZoom(Math.max(0.1, Math.floor(fitScale * 100) / 100));
+  }
+};
+
+```
+
+---
+
+<a id="plik-jsfileactionsjs"></a>
+### Plik: [js/fileActions.js](./js/fileActions.js)
+
+- **Ścieżka względna:** `js/fileActions.js`
+- **Liczba linii:** 188
+- **Rozmiar:** 5,992 bajtów (5.9 KB)
+- **Rola modułu:** Operacje na plikach: tworzenie nowego dokumentu, wczytywanie pliku graficznego, eksport/zapis (PNG, JPG), schowek systemowy.
+
+```javascript
+/**
+ * js/fileActions.js
+ * Obsługa operacji wejścia/wyjścia (I/O):
+ * - Nowy dokument
+ * - Wczytywanie pliku obrazu z dysku (z dopasowaniem wymiarów i zoomu)
+ * - Ujednolicony modal zapisu obrazu (PNG / JPG)
+ * - Wybór przezroczystego tła dla PNG oraz regulacja jakości kompresji dla JPG
+ */
+
+window.PaintFiles = {
+  /**
+   * Tworzy nowy, czysty dokument (1024 × 640 px z białym tłem).
+   */
+  newDocument() {
+    if (window.PaintCanvas.history && window.PaintCanvas.history.canUndo) {
+      if (!confirm('Utworzenie nowego dokumentu spowoduje utratę niezapisanego rysunku. Kontynuować?')) {
+        return;
+      }
+    }
+    window.PaintCanvas.setDimensions(1024, 640);
+    window.PaintCanvas.clearToWhite(false);
+    window.PaintCanvas.history.reset(window.PaintCanvas.mainCtx);
+    window.PaintCanvas.fitToScreen();
+  },
+
+  /**
+   * Otwiera okno dialogowe wyboru pliku i wczytuje obraz na kanwę.
+   */
+  openImageFile() {
+    if (window.PaintCanvas.history && window.PaintCanvas.history.canUndo) {
+      if (!confirm('Wczytanie nowego obrazu zastąpi obecny rysunek. Kontynuować?')) {
+        return;
+      }
+    }
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/png, image/jpeg, image/webp, image/bmp';
+
+    input.onchange = (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      this.loadImageFromFile(file);
+    };
+
+    input.click();
+  },
+
+  /**
+   * Wczytuje obiekt File lub Blob na płótno.
+   */
+  loadImageFromFile(file) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        // Dopasuj fizyczne wymiary kanwy do otwartego obrazu
+        window.PaintCanvas.setDimensions(img.naturalWidth, img.naturalHeight);
+
+        // Narysuj wczytany obraz na głównym płótnie
+        const { mainCtx } = window.PaintCanvas;
+        mainCtx.fillStyle = '#ffffff';
+        mainCtx.fillRect(0, 0, img.naturalWidth, img.naturalHeight);
+        mainCtx.drawImage(img, 0, 0);
+
+        // Zresetuj historię, ustawiając wczytany obraz jako stan bazowy
+        window.PaintCanvas.history.reset(mainCtx);
+
+        // Dopasuj zoom do ekranu
+        window.PaintCanvas.fitToScreen();
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  },
+
+  /**
+   * Otwiera zintegrowany modal zapisu obrazu.
+   */
+  openSaveModal() {
+    const modal = document.getElementById('save-modal');
+    if (modal) {
+      modal.classList.add('open');
+      const filenameInput = document.getElementById('save-filename');
+      if (filenameInput) {
+        filenameInput.focus();
+        filenameInput.select();
+      }
+    }
+  },
+
+  /**
+   * Zamyka modal zapisu obrazu.
+   */
+  closeSaveModal() {
+    const modal = document.getElementById('save-modal');
+    if (modal) {
+      modal.classList.remove('open');
+    }
+  },
+
+  /**
+   * Zapisuje obraz z ustawieniami wybranymi w modalu.
+   */
+  saveFromModal() {
+    const format = document.querySelector('.btn-save-format.active')?.dataset.format || 'png';
+    const rawName = document.getElementById('save-filename')?.value.trim() || 'rysunek';
+    const cleanName = rawName.replace(/[\/\?<>\\:\*\|":]/g, '');
+
+    const transparent = document.getElementById('save-opt-transparent')?.checked ?? false;
+    const qualityPercent = parseInt(document.getElementById('save-quality-slider')?.value || '90', 10);
+    const quality = Math.max(0.1, Math.min(1.0, qualityPercent / 100));
+
+    if (format === 'png') {
+      this.exportPNG(cleanName, transparent);
+    } else {
+      this.exportJPG(cleanName, quality);
+    }
+
+    this.closeSaveModal();
+  },
+
+  /**
+   * Eksportuje rysunek do formatu PNG.
+   * Jeśli transparent === true, czysto białe piksele tła (RGB 255, 255, 255) stają się przezroczyste (Alfa 0).
+   */
+  exportPNG(filename = 'rysunek', transparent = false) {
+    const mainCanvas = window.PaintCanvas.mainCanvas;
+    let exportCanvas = mainCanvas;
+
+    if (transparent) {
+      // Kopia płótna do operacji na kanale alfa
+      exportCanvas = document.createElement('canvas');
+      exportCanvas.width = mainCanvas.width;
+      exportCanvas.height = mainCanvas.height;
+      const ctx = exportCanvas.getContext('2d');
+      ctx.drawImage(mainCanvas, 0, 0);
+
+      const imgData = ctx.getImageData(0, 0, exportCanvas.width, exportCanvas.height);
+      const data = imgData.data;
+
+      // Zastąp czysto białe piksele (#ffffff) pełną przezroczystością
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i] === 255 && data[i + 1] === 255 && data[i + 2] === 255) {
+          data[i + 3] = 0; // Kanał Alfa = 0 (przezroczysty)
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    exportCanvas.toBlob((blob) => {
+      if (blob) this.downloadBlob(blob, `${filename}.png`);
+    }, 'image/png');
+  },
+
+  /**
+   * Eksportuje rysunek do formatu JPG z regulacją jakości (stratna kompresja).
+   */
+  exportJPG(filename = 'rysunek', quality = 0.90) {
+    const mainCanvas = window.PaintCanvas.mainCanvas;
+    // Gwarancja czysto białego podkładu dla formatu JPG (brak kanału alfa)
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = mainCanvas.width;
+    exportCanvas.height = mainCanvas.height;
+    const ctx = exportCanvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+    ctx.drawImage(mainCanvas, 0, 0);
+
+    exportCanvas.toBlob((blob) => {
+      if (blob) this.downloadBlob(blob, `${filename}.jpg`);
+    }, 'image/jpeg', quality);
+  },
+
+  /**
+   * Pomocnicze pobieranie bloba przez przeglądarkę.
+   */
+  downloadBlob(blob, fullName) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fullName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+};
+
+```
+
+---
+
+<a id="plik-jsfloodfilljs"></a>
+### Plik: [js/floodFill.js](./js/floodFill.js)
+
+- **Ścieżka względna:** `js/floodFill.js`
+- **Liczba linii:** 128
+- **Rozmiar:** 4,013 bajtów (3.9 KB)
+- **Rola modułu:** Implementacja algorytmu wypełniania kolorem (kubełek z farbą / flood fill) operująca na tablicy pikseli ImageData.
+
+```javascript
+/**
+ * js/floodFill.js
+ * Algorytm wypełniania obszaru (Wiadro z farbą / Flood Fill).
+ *
+ * Zastosowano iteracyjny algorytm wypełniania (kolejka 4-kierunkowa) z tolerancją różnicy kolorów.
+ * Dzięki użyciu pętli while i tablicy zamiast rekurencji funkcyjnej,
+ * unikamy błędu przepełnienia stosu wywołań (Call Stack Overflow) na dużych kanwach.
+ */
+
+window.PaintFloodFill = {
+  /**
+   * Konwertuje ciąg hex '#rrggbb' na trójkę liczb [r, g, b].
+   */
+  hexToRgb(hex) {
+    const cleanHex = hex.replace('#', '');
+    const num = parseInt(cleanHex, 16);
+    return [
+      (num >> 16) & 255,
+      (num >> 8) & 255,
+      num & 255
+    ];
+  },
+
+  /**
+   * Wykonuje wypełnienie obszaru na zadanym kontekście Canvas 2D.
+   * @param {CanvasRenderingContext2D} ctx - Kontekst kanwy docelowej
+   * @param {number} startX - Współrzędna X kliknięcia (w pikselach kanwy)
+   * @param {number} startY - Współrzędna Y kliknięcia (w pikselach kanwy)
+   * @param {string} fillColorHex - Kolor docelowy w formacie hex, np. "#ff0000"
+   * @param {number} tolerance - Tolerancja dopasowania barwy (0-255)
+   */
+  fill(ctx, startX, startY, fillColorHex, tolerance = 32) {
+    startX = Math.floor(startX);
+    startY = Math.floor(startY);
+
+    const width = ctx.canvas.width;
+    const height = ctx.canvas.height;
+
+    // Poza zakresem kanwy
+    if (startX < 0 || startX >= width || startY < 0 || startY >= height) return;
+
+    // Pobranie bezpośredniej tablicy pikseli RGBA
+    const imgData = ctx.getImageData(0, 0, width, height);
+    const data = imgData.data;
+
+    // Pobranie koloru piksela startowego
+    const startIndex = (startY * width + startX) * 4;
+    const targetR = data[startIndex];
+    const targetG = data[startIndex + 1];
+    const targetB = data[startIndex + 2];
+    const targetA = data[startIndex + 3];
+
+    // Nowy kolor do wypełnienia
+    const [fillR, fillG, fillB] = this.hexToRgb(fillColorHex);
+    const fillA = 255; // Wypełniamy pełnym kryciem
+
+    // Jeśli kliknięto w piksel, który już ma dokładnie docelowy kolor – nic nie zmieniamy
+    if (
+      targetR === fillR &&
+      targetG === fillG &&
+      targetB === fillB &&
+      targetA === fillA
+    ) {
+      return;
+    }
+
+    // Funkcja sprawdzająca, czy dany piksel mieści się w tolerancji koloru docelowego
+    const matchesTarget = (idx) => {
+      const r = data[idx];
+      const g = data[idx + 1];
+      const b = data[idx + 2];
+      const a = data[idx + 3];
+
+      return (
+        Math.abs(r - targetR) <= tolerance &&
+        Math.abs(g - targetG) <= tolerance &&
+        Math.abs(b - targetB) <= tolerance &&
+        Math.abs(a - targetA) <= tolerance
+      );
+    };
+
+    // Tablica odwiedzonych pikseli (1 bajt na piksel dla maksymalnej wydajności)
+    const visited = new Uint8Array(width * height);
+
+    // Stos współrzędnych [x, y, x, y, ...]
+    const stack = [startX, startY];
+    visited[startY * width + startX] = 1;
+
+    while (stack.length > 0) {
+      const cy = stack.pop();
+      const cx = stack.pop();
+      const pixelIdx = (cy * width + cx) * 4;
+
+      // Pokoloruj piksel
+      data[pixelIdx] = fillR;
+      data[pixelIdx + 1] = fillG;
+      data[pixelIdx + 2] = fillB;
+      data[pixelIdx + 3] = fillA;
+
+      // Sprawdź 4 sąsiadów: Góra, Dół, Lewo, Prawo
+      const neighbors = [
+        [cx + 1, cy],
+        [cx - 1, cy],
+        [cx, cy + 1],
+        [cx, cy - 1]
+      ];
+
+      for (let i = 0; i < 4; i++) {
+        const nx = neighbors[i][0];
+        const ny = neighbors[i][1];
+
+        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+          const nVisitedIdx = ny * width + nx;
+          if (!visited[nVisitedIdx]) {
+            visited[nVisitedIdx] = 1;
+            const nDataIdx = nVisitedIdx * 4;
+            if (matchesTarget(nDataIdx)) {
+              stack.push(nx, ny);
+            }
+          }
+        }
+      }
+    }
+
+    // Zapisanie zmodyfikowanej tablicy pikseli z powrotem na kanwę
+    ctx.putImageData(imgData, 0, 0);
+  }
+};
+
+```
+
+---
+
+<a id="plik-jshistoryjs"></a>
+### Plik: [js/history.js](./js/history.js)
+
+- **Ścieżka względna:** `js/history.js`
+- **Liczba linii:** 108
+- **Rozmiar:** 2,622 bajtów (2.6 KB)
+- **Rola modułu:** Zarządzanie historią operacji (kolejki Undo / Redo) oraz zapisywaniem migawek stanu canvasu.
+
+```javascript
+/**
+ * js/history.js
+ * Moduł zarządzania historią operacji (Undo / Redo).
+ * Przechowuje migawki pikseli (ImageData) na stosach, umożliwiając cofanie i ponawianie.
+ */
+
+window.PaintHistory = class PaintHistory {
+  constructor(maxSteps = 30) {
+    this.maxSteps = maxSteps;
+    this.undoStack = [];
+    this.redoStack = [];
+  }
+
+  /**
+   * Zapisuje bieżący stan kanwy na stosie cofania.
+   * Czyści stos ponawiania, ponieważ wykonano nową operację.
+   */
+  pushState(ctx) {
+    const w = ctx.canvas.width;
+    const h = ctx.canvas.height;
+    const snapshot = ctx.getImageData(0, 0, w, h);
+
+    this.undoStack.push({
+      width: w,
+      height: h,
+      data: snapshot
+    });
+
+    if (this.undoStack.length > this.maxSteps) {
+      this.undoStack.shift(); // Usuń najstarszy krok, gdy przekroczono limit
+    }
+
+    this.redoStack = [];
+    this.notifyChange();
+  }
+
+  get canUndo() {
+    return this.undoStack.length > 1; // Musi zostać przynajmniej 1 stan początkowy
+  }
+
+  get canRedo() {
+    return this.redoStack.length > 0;
+  }
+
+  /**
+   * Cofa ostatnią operację.
+   */
+  undo(ctx, onResizeNeeded) {
+    if (!this.canUndo) return;
+
+    // Przenieś bieżący stan do stosu redo
+    const currentState = this.undoStack.pop();
+    this.redoStack.push(currentState);
+
+    // Odtwórz poprzedni stan
+    const prevState = this.undoStack[this.undoStack.length - 1];
+    this.applySnapshot(ctx, prevState, onResizeNeeded);
+    this.notifyChange();
+  }
+
+  /**
+   * Ponawia cofniętą operację.
+   */
+  redo(ctx, onResizeNeeded) {
+    if (!this.canRedo) return;
+
+    const nextState = this.redoStack.pop();
+    this.undoStack.push(nextState);
+
+    this.applySnapshot(ctx, nextState, onResizeNeeded);
+    this.notifyChange();
+  }
+
+  /**
+   * Przywraca migawkę na kanwę (uwzględnia ewentualną zmianę rozmiaru).
+   */
+  applySnapshot(ctx, state, onResizeNeeded) {
+    if (ctx.canvas.width !== state.width || ctx.canvas.height !== state.height) {
+      if (onResizeNeeded) {
+        onResizeNeeded(state.width, state.height, false);
+      } else {
+        ctx.canvas.width = state.width;
+        ctx.canvas.height = state.height;
+      }
+    }
+    ctx.putImageData(state.data, 0, 0);
+  }
+
+  /**
+   * Resetuje historię i zapisuje początkowy stan pustej/nowej kanwy.
+   */
+  reset(ctx) {
+    this.undoStack = [];
+    this.redoStack = [];
+    this.pushState(ctx);
+  }
+
+  notifyChange() {
+    if (window.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('paint:historychange', {
+        detail: {
+          canUndo: this.canUndo,
+          canRedo: this.canRedo
+        }
+      }));
+    }
+  }
+};
+
+```
+
+---
+
+<a id="plik-jstoolsjs"></a>
+### Plik: [js/tools.js](./js/tools.js)
+
+- **Ścieżka względna:** `js/tools.js`
+- **Liczba linii:** 285
+- **Rozmiar:** 8,435 bajtów (8.2 KB)
+- **Rola modułu:** Implementacja logiki narzędzi rysunkowych (ołówek, pędzel, linia, prostokąt, elipsa, gumka, pipeta, tekst itp.).
+
+```javascript
+/**
+ * js/tools.js
+ * Implementacja narzędzi edytora graficznego:
+ * - Ołówek (rysowanie odręczne)
+ * - Gumka (zmazywanie do koloru tła)
+ * - Linia (podgląd na żywo, Shift = kąty co 45°)
+ * - Prostokąt (podgląd na żywo, obrys/wypełnienie/oba, Shift = kwadrat)
+ * - Elipsa/Okrąg (podgląd na żywo, obrys/wypełnienie/oba, Shift = okrąg)
+ * - Wiadro (wypełnienie obszaru przez PaintFloodFill)
+ */
+
+window.PaintTools = {
+  isDrawing: false,
+  startX: 0,
+  startY: 0,
+
+  /**
+   * Pomocnicza konfiguracja stylu linii na wskazanym kontekście 2D.
+   */
+  applyStrokeStyle(ctx, color, width, dash = 'solid') {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    if (dash === 'dashed') {
+      ctx.setLineDash([width * 3, width * 2]);
+    } else if (dash === 'dotted') {
+      ctx.setLineDash([width * 0.5, width * 1.5]);
+    } else {
+      ctx.setLineDash([]);
+    }
+  },
+
+  currentButton: 0,
+
+  /**
+   * Zdarzenie naciśnięcia przycisku myszy / wskaźnika.
+   */
+  onPointerDown(e, coords) {
+    if (e.button !== 0 && e.button !== 2) return; // Obsługa lewego (0) i prawego (2) przycisku myszy
+    this.currentButton = e.button;
+    this.isDrawing = true;
+    this.startX = coords.x;
+    this.startY = coords.y;
+
+    const tool = window.PaintState.currentTool;
+    const { mainCtx } = window.PaintCanvas;
+
+    // LPM = kolor obrysu, PPM = kolor wypełnienia
+    const activeColor = (e.button === 2)
+      ? window.PaintState.fillColor
+      : window.PaintState.strokeColor;
+
+    if (tool === 'pencil') {
+      mainCtx.beginPath();
+      this.applyStrokeStyle(
+        mainCtx,
+        activeColor,
+        window.PaintState.lineWidth,
+        'solid'
+      );
+      mainCtx.moveTo(coords.x, coords.y);
+      mainCtx.lineTo(coords.x, coords.y); // Kropka w miejscu kliknięcia
+      mainCtx.stroke();
+    } else if (tool === 'eraser') {
+      mainCtx.beginPath();
+      this.applyStrokeStyle(
+        mainCtx,
+        '#ffffff', // Gumka maże kolorem białego tła
+        window.PaintState.eraserSize,
+        'solid'
+      );
+      mainCtx.moveTo(coords.x, coords.y);
+      mainCtx.lineTo(coords.x, coords.y);
+      mainCtx.stroke();
+    } else if (tool === 'bucket') {
+      // Wiadro: LPM = kolor wypełnienia, PPM = kolor obrysu
+      const fillCol = (e.button === 2)
+        ? window.PaintState.strokeColor
+        : window.PaintState.fillColor;
+
+      window.PaintFloodFill.fill(
+        mainCtx,
+        coords.x,
+        coords.y,
+        fillCol,
+        window.PaintState.tolerance
+      );
+      window.PaintCanvas.history.pushState(mainCtx);
+      this.isDrawing = false;
+    }
+  },
+
+  /**
+   * Zdarzenie ruchu myszy ze wciśniętym przyciskiem.
+   */
+  onPointerMove(e, coords) {
+    if (!this.isDrawing) return;
+
+    const tool = window.PaintState.currentTool;
+    const { mainCtx, overlayCtx } = window.PaintCanvas;
+
+    if (tool === 'pencil') {
+      mainCtx.lineTo(coords.x, coords.y);
+      mainCtx.stroke();
+    } else if (tool === 'eraser') {
+      mainCtx.lineTo(coords.x, coords.y);
+      mainCtx.stroke();
+    } else if (tool === 'line') {
+      // Podgląd linii na overlay canvas
+      window.PaintCanvas.clearOverlay();
+      this.drawLine(overlayCtx, this.startX, this.startY, coords.x, coords.y, e.shiftKey, this.currentButton === 2);
+    } else if (tool === 'rect') {
+      // Podgląd prostokąta na overlay canvas
+      window.PaintCanvas.clearOverlay();
+      this.drawRect(overlayCtx, this.startX, this.startY, coords.x, coords.y, e.shiftKey, this.currentButton === 2);
+    } else if (tool === 'ellipse') {
+      // Podgląd elipsy na overlay canvas
+      window.PaintCanvas.clearOverlay();
+      this.drawEllipse(overlayCtx, this.startX, this.startY, coords.x, coords.y, e.shiftKey, this.currentButton === 2);
+    }
+  },
+
+  /**
+   * Zdarzenie puszczenia przycisku myszy – utrwalenie kształtu na głównym płótnie.
+   */
+  onPointerUp(e, coords) {
+    if (!this.isDrawing) return;
+    this.isDrawing = false;
+
+    const tool = window.PaintState.currentTool;
+    const { mainCtx } = window.PaintCanvas;
+    const isAlt = this.currentButton === 2;
+
+    if (tool === 'pencil' || tool === 'eraser') {
+      window.PaintCanvas.history.pushState(mainCtx);
+    } else if (tool === 'line') {
+      window.PaintCanvas.clearOverlay();
+      this.drawLine(mainCtx, this.startX, this.startY, coords.x, coords.y, e.shiftKey, isAlt);
+      window.PaintCanvas.history.pushState(mainCtx);
+    } else if (tool === 'rect') {
+      window.PaintCanvas.clearOverlay();
+      const hasSize = Math.abs(coords.x - this.startX) > 0 || Math.abs(coords.y - this.startY) > 0;
+      if (hasSize) {
+        this.drawRect(mainCtx, this.startX, this.startY, coords.x, coords.y, e.shiftKey, isAlt);
+        window.PaintCanvas.history.pushState(mainCtx);
+      }
+    } else if (tool === 'ellipse') {
+      window.PaintCanvas.clearOverlay();
+      const hasSize = Math.abs(coords.x - this.startX) > 0 || Math.abs(coords.y - this.startY) > 0;
+      if (hasSize) {
+        this.drawEllipse(mainCtx, this.startX, this.startY, coords.x, coords.y, e.shiftKey, isAlt);
+        window.PaintCanvas.history.pushState(mainCtx);
+      }
+    }
+  },
+
+  // ────────────────── GEOMETRIA KSZTAŁTÓW ──────────────────
+
+  /**
+   * Rysuje linię z opcją przyciągania do kątów 0, 45, 90 stopni (Shift).
+   */
+  drawLine(ctx, x1, y1, x2, y2, shift, isAlt = false) {
+    let targetX = x2;
+    let targetY = y2;
+
+    if (shift) {
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const angle = Math.atan2(dy, dx);
+      const step = Math.PI / 4; // Kąty co 45 stopni
+      const snappedAngle = Math.round(angle / step) * step;
+      const length = Math.hypot(dx, dy);
+
+      targetX = x1 + Math.cos(snappedAngle) * length;
+      targetY = y1 + Math.sin(snappedAngle) * length;
+    }
+
+    const strokeCol = isAlt ? window.PaintState.fillColor : window.PaintState.strokeColor;
+
+    ctx.save();
+    this.applyStrokeStyle(
+      ctx,
+      strokeCol,
+      window.PaintState.lineWidth,
+      window.PaintState.lineDash
+    );
+
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(targetX, targetY);
+    ctx.stroke();
+    ctx.restore();
+  },
+
+  /**
+   * Rysuje prostokąt (lub kwadrat, gdy Shift).
+   */
+  drawRect(ctx, x1, y1, x2, y2, shift, isAlt = false) {
+    let w = x2 - x1;
+    let h = y2 - y1;
+
+    if (shift) {
+      const side = Math.max(Math.abs(w), Math.abs(h));
+      w = w < 0 ? -side : side;
+      h = h < 0 ? -side : side;
+    }
+
+    const rx = w < 0 ? x1 + w : x1;
+    const ry = h < 0 ? y1 + h : y1;
+    const rw = Math.abs(w);
+    const rh = Math.abs(h);
+
+    if (rw === 0 && rh === 0) return;
+
+    const fillCol = isAlt ? window.PaintState.strokeColor : window.PaintState.fillColor;
+    const strokeCol = isAlt ? window.PaintState.fillColor : window.PaintState.strokeColor;
+
+    ctx.save();
+    const mode = window.PaintState.fillMode;
+
+    if (mode === 'fill' || mode === 'both') {
+      ctx.fillStyle = fillCol;
+      ctx.fillRect(rx, ry, rw, rh);
+    }
+
+    if (mode === 'stroke' || mode === 'both') {
+      this.applyStrokeStyle(
+        ctx,
+        strokeCol,
+        window.PaintState.lineWidth,
+        window.PaintState.lineDash
+      );
+      ctx.strokeRect(rx, ry, rw, rh);
+    }
+
+    ctx.restore();
+  },
+
+  /**
+   * Rysuje elipsę (lub okrąg, gdy Shift).
+   */
+  drawEllipse(ctx, x1, y1, x2, y2, shift, isAlt = false) {
+    let rx = Math.abs(x2 - x1) / 2;
+    let ry = Math.abs(y2 - y1) / 2;
+
+    if (shift) {
+      const r = Math.max(rx, ry);
+      rx = r;
+      ry = r;
+    }
+
+    if (rx <= 0 || ry <= 0) return;
+
+    const cx = Math.min(x1, x2) + rx;
+    const cy = Math.min(y1, y2) + ry;
+
+    const fillCol = isAlt ? window.PaintState.strokeColor : window.PaintState.fillColor;
+    const strokeCol = isAlt ? window.PaintState.fillColor : window.PaintState.strokeColor;
+
+    ctx.save();
+    const mode = window.PaintState.fillMode;
+
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+
+    if (mode === 'fill' || mode === 'both') {
+      ctx.fillStyle = fillCol;
+      ctx.fill();
+    }
+
+    if (mode === 'stroke' || mode === 'both') {
+      this.applyStrokeStyle(
+        ctx,
+        strokeCol,
+        window.PaintState.lineWidth,
+        window.PaintState.lineDash
+      );
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+};
+
+```
+
+---
+
+<a id="plik-jsuijs"></a>
+### Plik: [js/ui.js](./js/ui.js)
+
+- **Ścieżka względna:** `js/ui.js`
+- **Liczba linii:** 758
+- **Rozmiar:** 26,744 bajtów (26.1 KB)
+- **Rola modułu:** Obsługa interfejsu użytkownika (UI), zdarzeń myszy i klawiatury (skróty klawiszowe), paneli bocznych, selektora kolorów oraz menu.
+
+```javascript
+/**
+ * js/ui.js
+ * Moduł powiązań interfejsu użytkownika (UI):
+ * - Przełączanie narzędzi w Toolbarze
+ * - Pasek opcji aktywnego narzędzia (ToolOptions)
+ * - Obsługa próbników barw i palety (ColorPanel)
+ * - Wskaźnik pozycji kursora, wymiarów i kontrolki zoomu (StatusBar)
+ * - Obsługa zdarzeń myszy, skrótów klawiszowych i ujednoliconego modalu zapisu
+ */
+
+window.PaintUI = {
+  init() {
+    this.bindToolButtons();
+    this.bindToolOptions();
+    this.bindColorPanel();
+    this.bindTopBarActions();
+    this.bindSaveModal();
+    this.bindCanvasEvents();
+    this.bindZoomControls();
+    this.bindKeyboardShortcuts();
+    this.bindStateObservers();
+    this.updateToolOptionsVisibility();
+    this.updateColorDisplays();
+  },
+
+  /**
+   * Przyciski wyboru narzędzia w lewym pasku bocznym.
+   */
+  bindToolButtons() {
+    const buttons = document.querySelectorAll('.tool-btn');
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const toolId = btn.dataset.tool;
+        if (!toolId) return;
+
+        buttons.forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        window.PaintState.set('currentTool', toolId);
+        if (toolId === 'bucket') {
+          this.setActiveColorTarget('fill');
+        } else if (toolId === 'pencil' || toolId === 'line' || toolId === 'eraser') {
+          this.setActiveColorTarget('stroke');
+        }
+        this.updateToolOptionsVisibility();
+        this.updateStatusToolHint();
+      });
+    });
+  },
+
+  /**
+   * Aktualizuje widoczność kontrolek w górnym pasku opcji (ToolOptions).
+   */
+  updateToolOptionsVisibility() {
+    const tool = window.PaintState.currentTool;
+
+    // Przełączanie sekcji opcji
+    const optPencil = document.getElementById('opt-pencil');
+    const optEraser = document.getElementById('opt-eraser');
+    const optLine = document.getElementById('opt-line');
+    const optShape = document.getElementById('opt-shape');
+    const optBucket = document.getElementById('opt-bucket');
+
+    if (optPencil) optPencil.style.display = tool === 'pencil' ? 'flex' : 'none';
+    if (optEraser) optEraser.style.display = tool === 'eraser' ? 'flex' : 'none';
+    if (optLine) optLine.style.display = tool === 'line' ? 'flex' : 'none';
+    if (optShape) optShape.style.display = (tool === 'rect' || tool === 'ellipse') ? 'flex' : 'none';
+    if (optBucket) optBucket.style.display = tool === 'bucket' ? 'flex' : 'none';
+
+    // Synchronizacja stanu kontrolek w widocznym panelu
+    this.syncDashStyleUI(window.PaintState.lineDash);
+    this.syncLineWidthUI(window.PaintState.lineWidth);
+    this.syncShapeStrokeVisibility();
+
+    // Nazwa aktywnego narzędzia w nagłówku paska opcji
+    const labelEl = document.getElementById('active-tool-label');
+    const names = {
+      pencil: 'Ołówek',
+      eraser: 'Gumka',
+      line: 'Linia',
+      rect: 'Prostokąt',
+      ellipse: 'Elipsa',
+      bucket: 'Wiadro z farbą'
+    };
+    if (labelEl) labelEl.textContent = names[tool] || tool;
+  },
+
+  /**
+   * Synchronizuje przyciski stylu linii (ciągła/przerywana/kropkowana) we wszystkich narzędziach.
+   */
+  syncDashStyleUI(dash) {
+    document.querySelectorAll('.btn-dash-style').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.dash === dash);
+    });
+  },
+
+  /**
+   * Synchronizuje suwaki grubości linii między narzędziami.
+   */
+  syncLineWidthUI(width) {
+    ['pencil-width-slider', 'line-width-slider', 'shape-width-slider'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.value = width;
+    });
+    ['pencil-width-val', 'line-width-val', 'shape-width-val'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = `${width}px`;
+    });
+  },
+
+  /**
+   * Aktualizuje widoczność kontrolek obrysu w zależności od trybu wypełnienia kształtu.
+   */
+  syncShapeStrokeVisibility() {
+    const strokeControls = document.getElementById('shape-stroke-controls');
+    if (strokeControls) {
+      const wantsStroke = window.PaintState.fillMode !== 'fill';
+      strokeControls.style.display = wantsStroke ? 'flex' : 'none';
+    }
+  },
+
+  /**
+   * Wiązanie suwaków i pól w pasku opcji.
+   */
+  bindToolOptions() {
+    // 1. Grubość ołówka
+    const pencilWidthSlider = document.getElementById('pencil-width-slider');
+    if (pencilWidthSlider) {
+      pencilWidthSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        window.PaintState.set('lineWidth', val);
+        this.syncLineWidthUI(val);
+      });
+    }
+
+    // Presety grubości ołówka (1, 2, 4, 8, 16, 24 px)
+    document.querySelectorAll('.pencil-size-preset').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const size = parseInt(btn.dataset.size, 10);
+        window.PaintState.set('lineWidth', size);
+        this.syncLineWidthUI(size);
+      });
+    });
+
+    // 2. Rozmiar gumki
+    const eraserSizeSlider = document.getElementById('eraser-size-slider');
+    const eraserSizeVal = document.getElementById('eraser-size-val');
+    if (eraserSizeSlider) {
+      eraserSizeSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        window.PaintState.set('eraserSize', val);
+        if (eraserSizeVal) eraserSizeVal.textContent = `${val}px`;
+      });
+    }
+
+    // 3. Grubość linii
+    const lineWidthSlider = document.getElementById('line-width-slider');
+    if (lineWidthSlider) {
+      lineWidthSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        window.PaintState.set('lineWidth', val);
+        this.syncLineWidthUI(val);
+      });
+    }
+
+    // Styl linii (ciągła, przerywana, kropkowana) - synchronizowany między Linia i Kształty
+    document.querySelectorAll('.btn-dash-style').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const dash = btn.dataset.dash;
+        window.PaintState.set('lineDash', dash);
+        this.syncDashStyleUI(dash);
+      });
+    });
+
+    // 4. Kształty (tryb: obrys, wypełnienie, oba)
+    document.querySelectorAll('.btn-fill-mode').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.btn-fill-mode').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        window.PaintState.set('fillMode', btn.dataset.mode);
+        this.syncShapeStrokeVisibility();
+      });
+    });
+
+    // Grubość obrysu kształtów
+    const shapeWidthSlider = document.getElementById('shape-width-slider');
+    if (shapeWidthSlider) {
+      shapeWidthSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        window.PaintState.set('lineWidth', val);
+        this.syncLineWidthUI(val);
+      });
+    }
+
+    // 5. Tolerancja i kolor wiadra
+    const bucketTolSlider = document.getElementById('bucket-tol-slider');
+    const bucketTolVal = document.getElementById('bucket-tol-val');
+    if (bucketTolSlider) {
+      bucketTolSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        window.PaintState.set('tolerance', val);
+        if (bucketTolVal) bucketTolVal.textContent = val;
+      });
+    }
+
+    const inputBucketColor = document.getElementById('input-bucket-color');
+    if (inputBucketColor) {
+      inputBucketColor.addEventListener('input', (e) => {
+        window.PaintState.set('fillColor', e.target.value);
+        this.updateColorDisplays();
+      });
+    }
+  },
+
+  /**
+   * Ustawia aktywny cel edycji koloru: 'stroke' (obrys) lub 'fill' (wypełnienie).
+   */
+  setActiveColorTarget(target) {
+    window.PaintState.activeColorTarget = target;
+    const swatchStroke = document.getElementById('preview-stroke-color');
+    const swatchFill = document.getElementById('preview-fill-color');
+    const rowStroke = document.getElementById('row-stroke-color');
+    const rowFill = document.getElementById('row-fill-color');
+
+    if (swatchStroke) swatchStroke.classList.toggle('active', target === 'stroke');
+    if (swatchFill) swatchFill.classList.toggle('active', target === 'fill');
+    if (rowStroke) rowStroke.classList.toggle('active', target === 'stroke');
+    if (rowFill) rowFill.classList.toggle('active', target === 'fill');
+
+    const hint = document.querySelector('.palette-hint');
+    if (hint) {
+      if (target === 'stroke') {
+        hint.textContent = 'Aktywny: Obrys · Klik: zmiana obrysu · Shift/PPM: wypełnienie';
+      } else {
+        hint.textContent = 'Aktywny: Wypełnienie · Klik: zmiana wypełnienia · Shift/PPM: obrys';
+      }
+    }
+  },
+
+  /**
+   * Obsługa wyboru kolorów, nakładających się próbników i palety barw.
+   */
+  bindColorPanel() {
+    const inputStroke = document.getElementById('input-stroke-color');
+    const inputFill = document.getElementById('input-fill-color');
+    const previewStroke = document.getElementById('preview-stroke-color');
+    const previewFill = document.getElementById('preview-fill-color');
+    const rowStroke = document.getElementById('row-stroke-color');
+    const rowFill = document.getElementById('row-fill-color');
+
+    // Kolor obrysu z systemowego próbnika
+    if (inputStroke) {
+      inputStroke.addEventListener('input', (e) => {
+        window.PaintState.set('strokeColor', e.target.value);
+        this.setActiveColorTarget('stroke');
+        this.updateColorDisplays();
+      });
+    }
+
+    // Kolor wypełnienia z systemowego próbnika
+    if (inputFill) {
+      inputFill.addEventListener('input', (e) => {
+        window.PaintState.set('fillColor', e.target.value);
+        this.setActiveColorTarget('fill');
+        this.updateColorDisplays();
+      });
+    }
+
+    // Kliknięcie w próbnik obrysu lub etykietę aktywuje obrys
+    if (previewStroke) {
+      previewStroke.addEventListener('click', (e) => {
+        if (e.target !== inputStroke) this.setActiveColorTarget('stroke');
+      });
+    }
+    if (rowStroke) {
+      rowStroke.addEventListener('click', () => this.setActiveColorTarget('stroke'));
+    }
+
+    // Kliknięcie w próbnik wypełnienia lub etykietę aktywuje wypełnienie
+    if (previewFill) {
+      previewFill.addEventListener('click', (e) => {
+        if (e.target !== inputFill) this.setActiveColorTarget('fill');
+      });
+    }
+    if (rowFill) {
+      rowFill.addEventListener('click', () => this.setActiveColorTarget('fill'));
+    }
+
+    // Zamiana kolorów (X)
+    const btnSwap = document.getElementById('btn-swap-colors');
+    if (btnSwap) {
+      btnSwap.addEventListener('click', () => {
+        const prevStroke = window.PaintState.strokeColor;
+        window.PaintState.strokeColor = window.PaintState.fillColor;
+        window.PaintState.fillColor = prevStroke;
+        this.updateColorDisplays();
+      });
+    }
+
+    // Reset kolorów (domyślne)
+    const btnReset = document.getElementById('btn-reset-colors');
+    if (btnReset) {
+      btnReset.addEventListener('click', () => {
+        window.PaintState.strokeColor = '#8b5cf6';
+        window.PaintState.fillColor = '#3b82f6';
+        this.setActiveColorTarget('stroke');
+        this.updateColorDisplays();
+      });
+    }
+
+    // Paleta gotowych próbek kolorów
+    document.querySelectorAll('.color-swatch').forEach((swatch) => {
+      const color = swatch.dataset.color;
+
+      // Kliknięcie LPM: modyfikuje aktywny cel (lub drugi, jeśli wciśnięty Shift)
+      swatch.addEventListener('click', (e) => {
+        const activeTarget = window.PaintState.activeColorTarget || 'stroke';
+        const targetToSet = e.shiftKey ? (activeTarget === 'stroke' ? 'fill' : 'stroke') : activeTarget;
+
+        if (targetToSet === 'stroke') {
+          window.PaintState.set('strokeColor', color);
+        } else {
+          window.PaintState.set('fillColor', color);
+        }
+        this.updateColorDisplays();
+      });
+
+      // Kliknięcie PPM: modyfikuje nieaktywny cel (wypełnienie, gdy aktywny obrys)
+      swatch.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        const activeTarget = window.PaintState.activeColorTarget || 'stroke';
+        const targetToSet = activeTarget === 'stroke' ? 'fill' : 'stroke';
+
+        if (targetToSet === 'stroke') {
+          window.PaintState.set('strokeColor', color);
+        } else {
+          window.PaintState.set('fillColor', color);
+        }
+        this.updateColorDisplays();
+      });
+    });
+  },
+
+  /**
+   * Aktualizuje podgląd wizualny kolorów w panelu oraz w pasku narzędzi.
+   */
+  updateColorDisplays() {
+    const inputStroke = document.getElementById('input-stroke-color');
+    const inputFill = document.getElementById('input-fill-color');
+    const previewStroke = document.getElementById('preview-stroke-color');
+    const previewFill = document.getElementById('preview-fill-color');
+    const hexStroke = document.getElementById('hex-stroke-color');
+    const hexFill = document.getElementById('hex-fill-color');
+
+    const previewBucket = document.getElementById('preview-bucket-color');
+    const inputBucket = document.getElementById('input-bucket-color');
+    const hexBucket = document.getElementById('hex-bucket-color');
+
+    if (inputStroke) inputStroke.value = window.PaintState.strokeColor;
+    if (inputFill) inputFill.value = window.PaintState.fillColor;
+
+    if (previewStroke) previewStroke.style.backgroundColor = window.PaintState.strokeColor;
+    if (previewFill) previewFill.style.backgroundColor = window.PaintState.fillColor;
+
+    if (hexStroke) hexStroke.textContent = window.PaintState.strokeColor.toUpperCase();
+    if (hexFill) hexFill.textContent = window.PaintState.fillColor.toUpperCase();
+
+    // Synchronizacja wskaźnika koloru wiadra
+    if (previewBucket) previewBucket.style.backgroundColor = window.PaintState.fillColor;
+    if (inputBucket) inputBucket.value = window.PaintState.fillColor;
+    if (hexBucket) hexBucket.textContent = window.PaintState.fillColor.toUpperCase();
+  },
+
+  /**
+   * Akcje w górnym menu (Nowy, Otwórz, Zapisz, Cofnij, Ponów, Wyczyść, Rozmiar).
+   */
+  bindTopBarActions() {
+    // 1. Nowy dokument
+    const btnNew = document.getElementById('btn-new-file');
+    if (btnNew) {
+      btnNew.addEventListener('click', () => window.PaintFiles.newDocument());
+    }
+
+    // 2. Otwórz plik obrazu
+    const btnOpenFile = document.getElementById('btn-open-file');
+    if (btnOpenFile) {
+      btnOpenFile.addEventListener('click', () => window.PaintFiles.openImageFile());
+    }
+
+    // 3. Ujednolicony przycisk Zapisz
+    const btnSaveFile = document.getElementById('btn-save-file');
+    if (btnSaveFile) {
+      btnSaveFile.addEventListener('click', () => window.PaintFiles.openSaveModal());
+    }
+
+    // 4. Cofnij / Ponów
+    const btnUndo = document.getElementById('btn-undo');
+    const btnRedo = document.getElementById('btn-redo');
+
+    if (btnUndo) {
+      btnUndo.addEventListener('click', () => {
+        window.PaintCanvas.history.undo(window.PaintCanvas.mainCtx, (w, h) => {
+          window.PaintCanvas.setDimensions(w, h);
+        });
+      });
+    }
+
+    if (btnRedo) {
+      btnRedo.addEventListener('click', () => {
+        window.PaintCanvas.history.redo(window.PaintCanvas.mainCtx, (w, h) => {
+          window.PaintCanvas.setDimensions(w, h);
+        });
+      });
+    }
+
+    // 5. Wyczyść całą kanwę do bieli
+    const btnClear = document.getElementById('btn-clear-canvas');
+    if (btnClear) {
+      btnClear.addEventListener('click', () => {
+        if (confirm('Czy na pewno chcesz wyczyścić całą kanwę?')) {
+          window.PaintCanvas.clearToWhite(true);
+        }
+      });
+    }
+
+    // 6. Zmiana rozmiaru kanwy z panelu bocznego
+    const inputCanvasW = document.getElementById('input-canvas-width');
+    const inputCanvasH = document.getElementById('input-canvas-height');
+    const btnApplySize = document.getElementById('btn-apply-canvas-size');
+
+    const applySize = () => {
+      const w = parseInt(inputCanvasW.value, 10);
+      const h = parseInt(inputCanvasH.value, 10);
+      if (w > 0 && h > 0) {
+        window.PaintCanvas.resize(w, h, true);
+      }
+    };
+
+    if (btnApplySize && inputCanvasW && inputCanvasH) {
+      btnApplySize.addEventListener('click', applySize);
+      inputCanvasW.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') applySize();
+      });
+      inputCanvasH.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') applySize();
+      });
+    }
+
+    // Aktualizacja wartości pól rozmiaru przy zdarzeniu zmiany wymiarów
+    window.addEventListener('paint:dimensionschange', (e) => {
+      const { width, height } = e.detail;
+      if (inputCanvasW) inputCanvasW.value = width;
+      if (inputCanvasH) inputCanvasH.value = height;
+
+      const statusDim = document.getElementById('status-dimensions');
+      if (statusDim) statusDim.textContent = `${width} × ${height} px`;
+    });
+  },
+
+  /**
+   * Obsługa ujednoliconego modalu zapisu obrazu (PNG / JPG).
+   */
+  bindSaveModal() {
+    const modal = document.getElementById('save-modal');
+    if (!modal) return;
+
+    // Przełącznik formatu PNG / JPG
+    const formatButtons = document.querySelectorAll('.btn-save-format');
+    const pngOptions = document.getElementById('save-png-options');
+    const jpgOptions = document.getElementById('save-jpg-options');
+
+    formatButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        formatButtons.forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const format = btn.dataset.format;
+        if (format === 'png') {
+          if (pngOptions) pngOptions.style.display = 'block';
+          if (jpgOptions) jpgOptions.style.display = 'none';
+        } else {
+          if (pngOptions) pngOptions.style.display = 'none';
+          if (jpgOptions) jpgOptions.style.display = 'block';
+        }
+      });
+    });
+
+    // Suwak jakości dla JPG
+    const qualitySlider = document.getElementById('save-quality-slider');
+    const qualityVal = document.getElementById('save-quality-val');
+    if (qualitySlider && qualityVal) {
+      qualitySlider.addEventListener('input', (e) => {
+        qualityVal.textContent = `${e.target.value}%`;
+      });
+    }
+
+    // Zamknięcie modalu
+    const btnClose = document.getElementById('btn-modal-close');
+    const btnCancel = document.getElementById('btn-modal-cancel');
+    const btnConfirm = document.getElementById('btn-modal-confirm');
+
+    if (btnClose) btnClose.addEventListener('click', () => window.PaintFiles.closeSaveModal());
+    if (btnCancel) btnCancel.addEventListener('click', () => window.PaintFiles.closeSaveModal());
+    if (btnConfirm) btnConfirm.addEventListener('click', () => window.PaintFiles.saveFromModal());
+
+    // Kliknięcie w tło (backdrop) zamyka okno
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        window.PaintFiles.closeSaveModal();
+      }
+    });
+
+    // Enter w polu nazwy zatwierdza zapis
+    const filenameInput = document.getElementById('save-filename');
+    if (filenameInput) {
+      filenameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          window.PaintFiles.saveFromModal();
+        }
+      });
+    }
+  },
+
+  /**
+   * Zdarzenia myszy / wskaźnika na płótnie.
+   */
+  bindCanvasEvents() {
+    const overlay = window.PaintCanvas.overlayCanvas;
+    const statusCoords = document.getElementById('status-coords');
+
+    // Wyłączenie menu kontekstowego przeglądarki na płótnie (obsługa PPM)
+    overlay.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    overlay.addEventListener('pointerdown', (e) => {
+      overlay.setPointerCapture(e.pointerId);
+      const coords = window.PaintCanvas.getCanvasCoords(e);
+      window.PaintTools.onPointerDown(e, coords);
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      // Wylicz pozycję kursora na kanwie
+      const coords = window.PaintCanvas.getCanvasCoords(e);
+
+      // Aktualizuj współrzędne w pasku stanu, jeśli wskaźnik znajduje się nad kanwą
+      if (coords.x >= 0 && coords.x <= window.PaintState.canvasWidth &&
+          coords.y >= 0 && coords.y <= window.PaintState.canvasHeight) {
+        if (statusCoords) {
+          statusCoords.textContent = `${Math.floor(coords.x)}, ${Math.floor(coords.y)} px`;
+        }
+      }
+
+      window.PaintTools.onPointerMove(e, coords);
+    });
+
+    window.addEventListener('pointerup', (e) => {
+      const coords = window.PaintCanvas.getCanvasCoords(e);
+      window.PaintTools.onPointerUp(e, coords);
+    });
+
+    // Obsługa przeciągania pliku obrazu bezpośrednio na kanwę (Drag & Drop)
+    const container = window.PaintCanvas.container;
+    container.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      container.classList.add('drag-over');
+    });
+
+    container.addEventListener('dragleave', () => {
+      container.classList.remove('drag-over');
+    });
+
+    container.addEventListener('drop', (e) => {
+      e.preventDefault();
+      container.classList.remove('drag-over');
+      const file = e.dataTransfer?.files?.[0];
+      if (file && file.type.startsWith('image/')) {
+        window.PaintFiles.loadImageFromFile(file);
+      }
+    });
+  },
+
+  /**
+   * Kontrolki powiększenia (zoom).
+   */
+  bindZoomControls() {
+    const btnZoomIn = document.getElementById('btn-zoom-in');
+    const btnZoomOut = document.getElementById('btn-zoom-out');
+    const btnZoomReset = document.getElementById('btn-zoom-reset');
+    const btnZoomFit = document.getElementById('btn-zoom-fit');
+    const statusZoom = document.getElementById('status-zoom');
+
+    if (btnZoomIn) {
+      btnZoomIn.addEventListener('click', () => {
+        window.PaintCanvas.setZoom(window.PaintState.zoom * 1.25);
+      });
+    }
+
+    if (btnZoomOut) {
+      btnZoomOut.addEventListener('click', () => {
+        window.PaintCanvas.setZoom(window.PaintState.zoom / 1.25);
+      });
+    }
+
+    if (btnZoomReset) {
+      btnZoomReset.addEventListener('click', () => {
+        window.PaintCanvas.setZoom(1);
+      });
+    }
+
+    if (btnZoomFit) {
+      btnZoomFit.addEventListener('click', () => {
+        window.PaintCanvas.fitToScreen();
+      });
+    }
+
+    window.addEventListener('paint:zoomchange', (e) => {
+      if (statusZoom) {
+        statusZoom.textContent = `${Math.round(e.detail.zoom * 100)}%`;
+      }
+    });
+
+    // Zoom kółkiem myszy (Ctrl + Wheel)
+    const workspace = document.querySelector('.workspace');
+    if (workspace) {
+      workspace.addEventListener('wheel', (e) => {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+          window.PaintCanvas.setZoom(window.PaintState.zoom * factor);
+        }
+      }, { passive: false });
+    }
+  },
+
+  /**
+   * Skróty klawiszowe (P, E, L, R, O, B, X, Ctrl+Z, Ctrl+Y, Ctrl+S).
+   */
+  bindKeyboardShortcuts() {
+    window.addEventListener('keydown', (e) => {
+      // Anulowanie rysowania kształtu lub zamknięcie modalu klawiszem Escape
+      if (e.key === 'Escape') {
+        const saveModal = document.getElementById('save-modal');
+        if (saveModal && saveModal.classList.contains('open')) {
+          e.preventDefault();
+          window.PaintFiles.closeSaveModal();
+          return;
+        }
+        if (window.PaintTools.isDrawing) {
+          window.PaintTools.isDrawing = false;
+          window.PaintCanvas.clearOverlay();
+          return;
+        }
+      }
+
+      // Ignoruj, gdy użytkownik pisze w polu tekstowym (input)
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+
+      const key = e.key.toLowerCase();
+
+      // Undo: Ctrl+Z
+      if ((e.ctrlKey || e.metaKey) && key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        window.PaintCanvas.history.undo(window.PaintCanvas.mainCtx, (w, h) => {
+          window.PaintCanvas.setDimensions(w, h);
+        });
+        return;
+      }
+
+      // Redo: Ctrl+Y lub Ctrl+Shift+Z
+      if ((e.ctrlKey || e.metaKey) && (key === 'y' || (key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        window.PaintCanvas.history.redo(window.PaintCanvas.mainCtx, (w, h) => {
+          window.PaintCanvas.setDimensions(w, h);
+        });
+        return;
+      }
+
+      // Zapisz: Ctrl+S -> otwiera ujednolicony modal zapisu
+      if ((e.ctrlKey || e.metaKey) && key === 's') {
+        e.preventDefault();
+        window.PaintFiles.openSaveModal();
+        return;
+      }
+
+      // Otwórz: Ctrl+O
+      if ((e.ctrlKey || e.metaKey) && key === 'o') {
+        e.preventDefault();
+        window.PaintFiles.openImageFile();
+        return;
+      }
+
+      // Zamiana kolorów: X
+      if (key === 'x') {
+        const prevStroke = window.PaintState.strokeColor;
+        window.PaintState.strokeColor = window.PaintState.fillColor;
+        window.PaintState.fillColor = prevStroke;
+        this.updateColorDisplays();
+        return;
+      }
+
+      // Narzędzia:
+      const toolShortcuts = {
+        p: 'pencil',
+        e: 'eraser',
+        l: 'line',
+        r: 'rect',
+        o: 'ellipse',
+        b: 'bucket',
+        g: 'bucket'
+      };
+
+      if (toolShortcuts[key]) {
+        const toolBtn = document.querySelector(`.tool-btn[data-tool="${toolShortcuts[key]}"]`);
+        if (toolBtn) toolBtn.click();
+      }
+    });
+  },
+
+  /**
+   * Aktualizuje podpowiedź w pasku statusu dla aktywnego narzędzia.
+   */
+  updateStatusToolHint() {
+    const hintEl = document.getElementById('status-tool-hint');
+    if (!hintEl) return;
+
+    const tool = window.PaintState.currentTool;
+    const hints = {
+      pencil: 'Ołówek – rysowanie odręczne (P)',
+      eraser: 'Gumka – zmazywanie do białego tła (E)',
+      line: 'Linia – przeciągnij myszą; przytrzymaj Shift dla kątów 0°, 45°, 90° (L)',
+      rect: 'Prostokąt – przeciągnij myszą; przytrzymaj Shift dla kwadratu (R)',
+      ellipse: 'Elipsa – przeciągnij myszą; przytrzymaj Shift dla idealnego koła (O)',
+      bucket: 'Wiadro z farbą – kliknij, aby wypełnić ciągły obszar kolorem (B)'
+    };
+
+    hintEl.textContent = hints[tool] || '';
+  },
+
+  /**
+   * Obserwatorzy stanu (np. dostępność Undo / Redo).
+   */
+  bindStateObservers() {
+    window.addEventListener('paint:historychange', (e) => {
+      const { canUndo, canRedo } = e.detail;
+      const btnUndo = document.getElementById('btn-undo');
+      const btnRedo = document.getElementById('btn-redo');
+
+      if (btnUndo) {
+        btnUndo.disabled = !canUndo;
+        btnUndo.classList.toggle('disabled', !canUndo);
+      }
+      if (btnRedo) {
+        btnRedo.disabled = !canRedo;
+        btnRedo.classList.toggle('disabled', !canRedo);
+      }
+    });
+  }
+};
+
+```
+
+---
