@@ -12,14 +12,16 @@ window.PaintFiles = {
    * Tworzy nowy, czysty dokument (1024 × 640 px z białym tłem).
    */
   newDocument() {
-    if (window.PaintCanvas.history && window.PaintCanvas.history.canUndo) {
+    // v2: pytamy o zgodę tylko wtedy, gdy są NIEZAPISANE zmiany
+    if (window.PaintCanvas.history && window.PaintCanvas.history.isDirty) {
       if (!confirm('Utworzenie nowego dokumentu spowoduje utratę niezapisanego rysunku. Kontynuować?')) {
         return;
       }
     }
     window.PaintCanvas.setDimensions(1024, 640);
     window.PaintCanvas.clearToWhite(false);
-    window.PaintCanvas.history.reset(window.PaintCanvas.mainCtx);
+    window.PaintCanvas.history.reset();
+    window.PaintCanvas.history.markClean();
     window.PaintCanvas.fitToScreen();
   },
 
@@ -27,7 +29,8 @@ window.PaintFiles = {
    * Otwiera okno dialogowe wyboru pliku i wczytuje obraz na kanwę.
    */
   openImageFile() {
-    if (window.PaintCanvas.history && window.PaintCanvas.history.canUndo) {
+    // v2: pytamy o zgodę tylko wtedy, gdy są NIEZAPISANE zmiany
+    if (window.PaintCanvas.history && window.PaintCanvas.history.isDirty) {
       if (!confirm('Wczytanie nowego obrazu zastąpi obecny rysunek. Kontynuować?')) {
         return;
       }
@@ -63,8 +66,9 @@ window.PaintFiles = {
         mainCtx.fillRect(0, 0, img.naturalWidth, img.naturalHeight);
         mainCtx.drawImage(img, 0, 0);
 
-        // Zresetuj historię, ustawiając wczytany obraz jako stan bazowy
-        window.PaintCanvas.history.reset(mainCtx);
+        // Zresetuj historię, ustawiając wczytany obraz jako punkt odniesienia
+        window.PaintCanvas.history.reset();
+        window.PaintCanvas.history.markClean();
 
         // Dopasuj zoom do ekranu
         window.PaintCanvas.fitToScreen();
@@ -111,10 +115,16 @@ window.PaintFiles = {
     const qualityPercent = parseInt(document.getElementById('save-quality-slider')?.value || '90', 10);
     const quality = Math.max(0.1, Math.min(1.0, qualityPercent / 100));
 
+    const afterSave = () => {
+      if (window.PaintCanvas && window.PaintCanvas.history) {
+        window.PaintCanvas.history.markClean();
+      }
+    };
+
     if (format === 'png') {
-      this.exportPNG(cleanName, transparent);
+      this.exportPNG(cleanName, transparent, afterSave);
     } else {
-      this.exportJPG(cleanName, quality);
+      this.exportJPG(cleanName, quality, afterSave);
     }
 
     this.closeSaveModal();
@@ -124,7 +134,7 @@ window.PaintFiles = {
    * Eksportuje rysunek do formatu PNG.
    * Jeśli transparent === true, czysto białe piksele tła (RGB 255, 255, 255) stają się przezroczyste (Alfa 0).
    */
-  exportPNG(filename = 'rysunek', transparent = false) {
+  exportPNG(filename = 'rysunek', transparent = false, onDone = null) {
     const mainCanvas = window.PaintCanvas.mainCanvas;
     let exportCanvas = mainCanvas;
 
@@ -149,14 +159,17 @@ window.PaintFiles = {
     }
 
     exportCanvas.toBlob((blob) => {
-      if (blob) this.downloadBlob(blob, `${filename}.png`);
+      if (blob) {
+        this.downloadBlob(blob, `${filename}.png`);
+        if (onDone) onDone();
+      }
     }, 'image/png');
   },
 
   /**
    * Eksportuje rysunek do formatu JPG z regulacją jakości (stratna kompresja).
    */
-  exportJPG(filename = 'rysunek', quality = 0.90) {
+  exportJPG(filename = 'rysunek', quality = 0.90, onDone = null) {
     const mainCanvas = window.PaintCanvas.mainCanvas;
     // Gwarancja czysto białego podkładu dla formatu JPG (brak kanału alfa)
     const exportCanvas = document.createElement('canvas');
@@ -168,7 +181,10 @@ window.PaintFiles = {
     ctx.drawImage(mainCanvas, 0, 0);
 
     exportCanvas.toBlob((blob) => {
-      if (blob) this.downloadBlob(blob, `${filename}.jpg`);
+      if (blob) {
+        this.downloadBlob(blob, `${filename}.jpg`);
+        if (onDone) onDone();
+      }
     }, 'image/jpeg', quality);
   },
 

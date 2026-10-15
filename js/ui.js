@@ -290,9 +290,7 @@ window.PaintUI = {
     const btnSwap = document.getElementById('btn-swap-colors');
     if (btnSwap) {
       btnSwap.addEventListener('click', () => {
-        const prevStroke = window.PaintState.strokeColor;
-        window.PaintState.strokeColor = window.PaintState.fillColor;
-        window.PaintState.fillColor = prevStroke;
+        window.PaintState.swapColors();
         this.updateColorDisplays();
       });
     }
@@ -301,9 +299,7 @@ window.PaintUI = {
     const btnReset = document.getElementById('btn-reset-colors');
     if (btnReset) {
       btnReset.addEventListener('click', () => {
-        window.PaintState.strokeColor = '#8b5cf6';
-        window.PaintState.fillColor = '#3b82f6';
-        this.setActiveColorTarget('stroke');
+        window.PaintState.resetColors();
         this.updateColorDisplays();
       });
     }
@@ -646,14 +642,13 @@ window.PaintUI = {
           return;
         }
         if (window.PaintTools.isDrawing) {
-          window.PaintTools.isDrawing = false;
-          window.PaintCanvas.clearOverlay();
+          window.PaintTools.cancelGesture();
           return;
         }
       }
 
-      // Ignoruj, gdy użytkownik pisze w polu tekstowym (input)
-      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      // Ignoruj, gdy użytkownik pisze w polu tekstowym (w tym contenteditable)
+      if (e.target && e.target.matches && e.target.matches('input, select, textarea, [contenteditable]')) return;
 
       const key = e.key.toLowerCase();
 
@@ -691,9 +686,7 @@ window.PaintUI = {
 
       // Zamiana kolorów: X
       if (key === 'x') {
-        const prevStroke = window.PaintState.strokeColor;
-        window.PaintState.strokeColor = window.PaintState.fillColor;
-        window.PaintState.fillColor = prevStroke;
+        window.PaintState.swapColors();
         this.updateColorDisplays();
         return;
       }

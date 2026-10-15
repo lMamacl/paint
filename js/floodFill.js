@@ -2,9 +2,9 @@
  * js/floodFill.js
  * Algorytm wypełniania obszaru (Wiadro z farbą / Flood Fill).
  *
- * Zastosowano iteracyjny algorytm wypełniania (kolejka 4-kierunkowa) z tolerancją różnicy kolorów.
- * Dzięki użyciu pętli while i tablicy zamiast rekurencji funkcyjnej,
- * unikamy błędu przepełnienia stosu wywołań (Call Stack Overflow) na dużych kanwach.
+ * W wersji v2 algorytm wyznacza i zwraca precyzyjny prostokąt zmienionych pikseli
+ * (Dirty Rect: bounds) oraz wycinki ImageData przed i po wypełnieniu.
+ * Dzięki temu historia przyrostowa zapisuje tylko zmodyfikowany fragment.
  */
 
 window.PaintFloodFill = {
@@ -22,54 +22,46 @@ window.PaintFloodFill = {
   },
 
   /**
-   * Wykonuje wypełnienie obszaru na zadanym kontekście Canvas 2D.
-   * @param {CanvasRenderingContext2D} ctx - Kontekst kanwy docelowej
-   * @param {number} startX - Współrzędna X kliknięcia (w pikselach kanwy)
-   * @param {number} startY - Współrzędna Y kliknięcia (w pikselach kanwy)
-   * @param {string} fillColorHex - Kolor docelowy w formacie hex, np. "#ff0000"
-   * @param {number} tolerance - Tolerancja dopasowania barwy (0-255)
+   * Wyznacza obszar wypełnienia bez bezpośredniego modyfikowania kanwy.
+   * Zwraca { bounds, before, after } lub null, jeśli kliknięto w ten sam kolor / poza kanwą.
    */
-  fill(ctx, startX, startY, fillColorHex, tolerance = 32) {
+  compute(ctx, startX, startY, fillColorHex, tolerance = 32) {
     startX = Math.floor(startX);
     startY = Math.floor(startY);
 
     const width = ctx.canvas.width;
     const height = ctx.canvas.height;
 
-    // Poza zakresem kanwy
-    if (startX < 0 || startX >= width || startY < 0 || startY >= height) return;
+    if (startX < 0 || startX >= width || startY < 0 || startY >= height) return null;
 
-    // Pobranie bezpośredniej tablicy pikseli RGBA
-    const imgData = ctx.getImageData(0, 0, width, height);
-    const data = imgData.data;
+    // Pełny stan początkowy pikseli
+    const origData = ctx.getImageData(0, 0, width, height);
+    const dataSrc = origData.data;
 
-    // Pobranie koloru piksela startowego
     const startIndex = (startY * width + startX) * 4;
-    const targetR = data[startIndex];
-    const targetG = data[startIndex + 1];
-    const targetB = data[startIndex + 2];
-    const targetA = data[startIndex + 3];
+    const targetR = dataSrc[startIndex];
+    const targetG = dataSrc[startIndex + 1];
+    const targetB = dataSrc[startIndex + 2];
+    const targetA = dataSrc[startIndex + 3];
 
-    // Nowy kolor do wypełnienia
     const [fillR, fillG, fillB] = this.hexToRgb(fillColorHex);
-    const fillA = 255; // Wypełniamy pełnym kryciem
+    const fillA = 255;
 
-    // Jeśli kliknięto w piksel, który już ma dokładnie docelowy kolor – nic nie zmieniamy
+    // Jeśli punkt startowy ma już dokładnie kolor docelowy — brak zmian
     if (
       targetR === fillR &&
       targetG === fillG &&
       targetB === fillB &&
       targetA === fillA
     ) {
-      return;
+      return null;
     }
 
-    // Funkcja sprawdzająca, czy dany piksel mieści się w tolerancji koloru docelowego
     const matchesTarget = (idx) => {
-      const r = data[idx];
-      const g = data[idx + 1];
-      const b = data[idx + 2];
-      const a = data[idx + 3];
+      const r = dataSrc[idx];
+      const g = dataSrc[idx + 1];
+      const b = dataSrc[idx + 2];
+      const a = dataSrc[idx + 3];
 
       return (
         Math.abs(r - targetR) <= tolerance &&
@@ -79,25 +71,34 @@ window.PaintFloodFill = {
       );
     };
 
-    // Tablica odwiedzonych pikseli (1 bajt na piksel dla maksymalnej wydajności)
-    const visited = new Uint8Array(width * height);
+    // Kopia danych do modyfikacji
+    const modData = new ImageData(new Uint8ClampedArray(dataSrc), width, height);
+    const dataDst = modData.data;
 
-    // Stos współrzędnych [x, y, x, y, ...]
+    const visited = new Uint8Array(width * height);
     const stack = [startX, startY];
     visited[startY * width + startX] = 1;
+
+    let minX = width;
+    let minY = height;
+    let maxX = -1;
+    let maxY = -1;
 
     while (stack.length > 0) {
       const cy = stack.pop();
       const cx = stack.pop();
       const pixelIdx = (cy * width + cx) * 4;
 
-      // Pokoloruj piksel
-      data[pixelIdx] = fillR;
-      data[pixelIdx + 1] = fillG;
-      data[pixelIdx + 2] = fillB;
-      data[pixelIdx + 3] = fillA;
+      dataDst[pixelIdx] = fillR;
+      dataDst[pixelIdx + 1] = fillG;
+      dataDst[pixelIdx + 2] = fillB;
+      dataDst[pixelIdx + 3] = fillA;
 
-      // Sprawdź 4 sąsiadów: Góra, Dół, Lewo, Prawo
+      if (cx < minX) minX = cx;
+      if (cx > maxX) maxX = cx;
+      if (cy < minY) minY = cy;
+      if (cy > maxY) maxY = cy;
+
       const neighbors = [
         [cx + 1, cy],
         [cx - 1, cy],
@@ -122,7 +123,48 @@ window.PaintFloodFill = {
       }
     }
 
-    // Zapisanie zmodyfikowanej tablicy pikseli z powrotem na kanwę
-    ctx.putImageData(imgData, 0, 0);
+    if (maxX < minX || maxY < minY) {
+      return null;
+    }
+
+    const bounds = {
+      x: minX,
+      y: minY,
+      w: maxX - minX + 1,
+      h: maxY - minY + 1
+    };
+
+    // Wycięcie wycinków ImageData tylko dla zmodyfikowanego prostokąta
+    const subBefore = new ImageData(bounds.w, bounds.h);
+    const subAfter = new ImageData(bounds.w, bounds.h);
+    const src32 = new Uint32Array(dataSrc.buffer);
+    const dst32 = new Uint32Array(dataDst.buffer);
+    const b32 = new Uint32Array(subBefore.data.buffer);
+    const a32 = new Uint32Array(subAfter.data.buffer);
+
+    for (let r = 0; r < bounds.h; r++) {
+      const offsetSrc = (bounds.y + r) * width + bounds.x;
+      const offsetDst = r * bounds.w;
+      b32.set(src32.subarray(offsetSrc, offsetSrc + bounds.w), offsetDst);
+      a32.set(dst32.subarray(offsetSrc, offsetSrc + bounds.w), offsetDst);
+    }
+
+    return {
+      bounds,
+      before: subBefore,
+      after: subAfter
+    };
+  },
+
+  /**
+   * Wykonuje wypełnienie obszaru bezpośrednio na zadanym kontekście Canvas 2D.
+   * Zwraca obiekt z obszarem modyfikacji { bounds, before, after } lub null.
+   */
+  fill(ctx, startX, startY, fillColorHex, tolerance = 32) {
+    const res = this.compute(ctx, startX, startY, fillColorHex, tolerance);
+    if (res) {
+      ctx.putImageData(res.after, res.bounds.x, res.bounds.y);
+    }
+    return res;
   }
 };

@@ -7,13 +7,19 @@
  * ZAKRES: stan dotyczy JEDNEJ płaszczyzny pikseli — projekt nie ma warstw.
  */
 
+// Jedno źródło prawdy o kolorach domyślnych (używa tego też przycisk "przywróć domyślne")
+window.PaintDefaults = {
+  strokeColor: '#8b5cf6',
+  fillColor: '#3b82f6'
+};
+
 window.PaintState = {
   // Aktywne narzędzie: 'pencil' | 'eraser' | 'line' | 'rect' | 'ellipse' | 'bucket'
   currentTool: 'pencil',
 
   // Kolory
-  strokeColor: '#8b5cf6', // Domyślny kolor obrysu (fioletowy akcent)
-  fillColor: '#3b82f6',   // Domyślny kolor wypełnienia (wyrazisty błękit)
+  strokeColor: window.PaintDefaults.strokeColor,
+  fillColor: window.PaintDefaults.fillColor,
   activeColorTarget: 'stroke', // 'stroke' | 'fill' – który próbnik jest aktywny dla palety
 
   // Opcje linii i pędzla
@@ -39,5 +45,19 @@ window.PaintState = {
     if (window.dispatchEvent) {
       window.dispatchEvent(new CustomEvent('paint:statechange', { detail: { key, value } }));
     }
+  },
+
+  /** Zamiana kolorów obrysu i wypełnienia (przycisk ⇄ oraz klawisz X). */
+  swapColors() {
+    const prevStroke = this.strokeColor;
+    this.set('strokeColor', this.fillColor);
+    this.set('fillColor', prevStroke);
+  },
+
+  /** Przywrócenie kolorów domyślnych. */
+  resetColors() {
+    this.set('strokeColor', window.PaintDefaults.strokeColor);
+    this.set('fillColor', window.PaintDefaults.fillColor);
+    this.set('activeColorTarget', 'stroke');
   }
 };

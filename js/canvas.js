@@ -41,12 +41,14 @@ window.PaintCanvas = {
     this.overlayCanvas = document.getElementById('canvas-overlay');
     this.overlayCtx = this.overlayCanvas.getContext('2d');
 
-    this.history = new window.PaintHistory(30);
+    // v2: limit kroków ORAZ limit pamięci (64 MiB) — historia nie urośnie w nieskończoność
+    this.history = new window.PaintHistory({ maxSteps: 30, maxBytes: 64 * 1024 * 1024 });
 
     // Ustawienie początkowych wymiarów z białym tłem
     this.setDimensions(window.PaintState.canvasWidth, window.PaintState.canvasHeight);
     this.clearToWhite(false);
-    this.history.reset(this.mainCtx);
+    this.history.reset();
+    this.history.markClean();
   },
 
   /**
@@ -56,13 +58,17 @@ window.PaintCanvas = {
    * clearTransparent() = clearRect() dla tła przezroczystego.
    */
   clearToWhite(recordHistory = true) {
+    const full = window.PaintRect ? window.PaintRect.full(this.mainCanvas.width, this.mainCanvas.height) : null;
+
+    // v2: transakcja otwarta PRZED pierwszą zmianą pikseli
+    if (recordHistory) this.history.begin(this.mainCtx, full);
+
     this.mainCtx.fillStyle = '#ffffff';
     this.mainCtx.fillRect(0, 0, this.mainCanvas.width, this.mainCanvas.height);
     this.clearOverlay();
 
-    if (recordHistory) {
-      this.history.pushState(this.mainCtx);
-    }
+    // v2: jeśli kanwa była już biała, commit() zwróci false i NIE utworzy kroku
+    if (recordHistory) this.history.commit(this.mainCtx);
   },
 
   /**
@@ -102,6 +108,9 @@ window.PaintCanvas = {
     newWidth = Math.max(10, Math.round(newWidth));
     newHeight = Math.max(10, Math.round(newHeight));
 
+    // v2: begin() MUSI być przed setDimensions(), bo zmiana rozmiaru sama zmienia piksele
+    if (recordHistory) this.history.begin(this.mainCtx, null);
+
     // Kopia zapasowa dotychczasowej zawartości
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = this.mainCanvas.width;
@@ -119,8 +128,9 @@ window.PaintCanvas = {
     // Przerysowanie starej zawartości w lewym górnym rogu
     this.mainCtx.drawImage(tempCanvas, 0, 0);
 
+    // commit() sam wykryje zmianę wymiarów i utworzy krok zmiany geometrii
     if (recordHistory) {
-      this.history.pushState(this.mainCtx);
+      this.history.commit(this.mainCtx);
     }
   },
 
