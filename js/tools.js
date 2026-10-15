@@ -1,12 +1,14 @@
 /**
  * js/tools.js
- * Implementacja narzędzi edytora graficznego:
- * - Ołówek (rysowanie odręczne)
- * - Gumka (zmazywanie do koloru tła)
+ * Implementacja narzędzi edytora graficznego — pełna lista:
+ * - Ołówek (rysowanie odręczne, grubość 1–50 px)
+ * - Gumka (zmazywanie do koloru tła, 4–100 px)
  * - Linia (podgląd na żywo, Shift = kąty co 45°)
  * - Prostokąt (podgląd na żywo, obrys/wypełnienie/oba, Shift = kwadrat)
  * - Elipsa/Okrąg (podgląd na żywo, obrys/wypełnienie/oba, Shift = okrąg)
  * - Wiadro (wypełnienie obszaru przez PaintFloodFill)
+ *
+ * ZAKRES: powyższe sześć narzędzi. Pipeta, tekst i lasso NIE są zaimplementowane.
  */
 
 window.PaintTools = {

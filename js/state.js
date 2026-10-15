@@ -1,7 +1,10 @@
 /**
  * js/state.js
- * Centralny stan aplikacji Paint.
- * Przechowuje aktualnie wybrane narzędzie, kolory, parametry pędzla i kanwy.
+ * Centralny stan aplikacji Paint (Grafika Komputerowa).
+ * Przechowuje: aktywne narzędzie, kolor obrysu i wypełnienia, grubość śladu,
+ * styl linii, tryb wypełnienia kształtów, tolerancję wiadra oraz parametry kanwy.
+ *
+ * ZAKRES: stan dotyczy JEDNEJ płaszczyzny pikseli — projekt nie ma warstw.
  */
 
 window.PaintState = {
@@ -30,10 +33,7 @@ window.PaintState = {
   canvasHeight: 640,
   zoom: 1,                // Skala podglądu (np. 1 = 100%)
 
-  // Ostatnio użyte kolory w palecie
-  recentColors: [],
-
-  // Zmiana właściwości z powiadomieniem obserwatorów (opcjonalnie)
+  // Zmiana właściwości z powiadomieniem obserwatorów (paint:statechange)
   set(key, value) {
     this[key] = value;
     if (window.dispatchEvent) {
