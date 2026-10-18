@@ -15,6 +15,9 @@ window.PaintUI = {
     this.bindColorPanel();
     this.bindTopBarActions();
     this.bindSaveModal();
+    this.bindFileInfoModal();
+    this.bindErrorModal();
+    this.bindDragAndDrop();
     this.bindCanvasEvents();
     this.bindZoomControls();
     this.bindKeyboardShortcuts();
@@ -389,6 +392,17 @@ window.PaintUI = {
       btnSaveFile.addEventListener('click', () => window.PaintFiles.openSaveModal());
     }
 
+    // 3b. Informacje o pliku
+    const btnFileInfo = document.getElementById('btn-file-info');
+    if (btnFileInfo) {
+      btnFileInfo.addEventListener('click', () => this.openFileInfoModal());
+    }
+
+    const statusPpmBadge = document.getElementById('status-ppm-badge');
+    if (statusPpmBadge) {
+      statusPpmBadge.addEventListener('click', () => this.openFileInfoModal());
+    }
+
     // 4. Cofnij / Ponów
     const btnUndo = document.getElementById('btn-undo');
     const btnRedo = document.getElementById('btn-redo');
@@ -454,16 +468,19 @@ window.PaintUI = {
   },
 
   /**
-   * Obsługa ujednoliconego modalu zapisu obrazu (PNG / JPG).
+   * Obsługa ujednoliconego modalu zapisu obrazu (PPM P3/P6, PNG, JPG).
    */
   bindSaveModal() {
     const modal = document.getElementById('save-modal');
     if (!modal) return;
 
-    // Przełącznik formatu PNG / JPG
+    // Przełącznik formatu (PPM P6, PPM P3, PNG, JPG)
     const formatButtons = document.querySelectorAll('.btn-save-format');
+    const p6Options = document.getElementById('save-ppm-p6-options');
+    const p3Options = document.getElementById('save-ppm-p3-options');
     const pngOptions = document.getElementById('save-png-options');
     const jpgOptions = document.getElementById('save-jpg-options');
+    const extBadge = document.getElementById('save-extension-badge');
 
     formatButtons.forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -471,12 +488,19 @@ window.PaintUI = {
         btn.classList.add('active');
 
         const format = btn.dataset.format;
-        if (format === 'png') {
-          if (pngOptions) pngOptions.style.display = 'block';
-          if (jpgOptions) jpgOptions.style.display = 'none';
-        } else {
-          if (pngOptions) pngOptions.style.display = 'none';
-          if (jpgOptions) jpgOptions.style.display = 'block';
+        if (p6Options) p6Options.style.display = format === 'ppm-p6' ? 'block' : 'none';
+        if (p3Options) p3Options.style.display = format === 'ppm-p3' ? 'block' : 'none';
+        if (pngOptions) pngOptions.style.display = format === 'png' ? 'block' : 'none';
+        if (jpgOptions) jpgOptions.style.display = format === 'jpg' ? 'block' : 'none';
+
+        if (extBadge) {
+          if (format === 'ppm-p6' || format === 'ppm-p3') {
+            extBadge.textContent = '.ppm';
+          } else if (format === 'png') {
+            extBadge.textContent = '.png';
+          } else if (format === 'jpg') {
+            extBadge.textContent = '.jpg';
+          }
         }
       });
     });
@@ -633,8 +657,20 @@ window.PaintUI = {
    */
   bindKeyboardShortcuts() {
     window.addEventListener('keydown', (e) => {
-      // Anulowanie rysowania kształtu lub zamknięcie modalu klawiszem Escape
+      // Anulowanie rysowania kształtu lub zamknięcie modali klawiszem Escape
       if (e.key === 'Escape') {
+        const errorModal = document.getElementById('error-modal');
+        if (errorModal && errorModal.classList.contains('open')) {
+          e.preventDefault();
+          this.closeErrorModal();
+          return;
+        }
+        const fileInfoModal = document.getElementById('file-info-modal');
+        if (fileInfoModal && fileInfoModal.classList.contains('open')) {
+          e.preventDefault();
+          this.closeFileInfoModal();
+          return;
+        }
         const saveModal = document.getElementById('save-modal');
         if (saveModal && saveModal.classList.contains('open')) {
           e.preventDefault();
@@ -747,5 +783,217 @@ window.PaintUI = {
         btnRedo.classList.toggle('disabled', !canRedo);
       }
     });
+  },
+
+  /**
+   * Obsługa modalu informacji o pliku (Wymóg 3).
+   */
+  bindFileInfoModal() {
+    const modal = document.getElementById('file-info-modal');
+    if (!modal) return;
+
+    const btnClose = document.getElementById('btn-file-info-close');
+    const btnOk = document.getElementById('btn-file-info-ok');
+
+    if (btnClose) btnClose.addEventListener('click', () => this.closeFileInfoModal());
+    if (btnOk) btnOk.addEventListener('click', () => this.closeFileInfoModal());
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) this.closeFileInfoModal();
+    });
+  },
+
+  /**
+   * Obsługa modalu błędu (Wymóg 4).
+   */
+  bindErrorModal() {
+    const modal = document.getElementById('error-modal');
+    if (!modal) return;
+
+    const btnClose = document.getElementById('btn-error-modal-close');
+    const btnOk = document.getElementById('btn-error-modal-ok');
+
+    if (btnClose) btnClose.addEventListener('click', () => this.closeErrorModal());
+    if (btnOk) btnOk.addEventListener('click', () => this.closeErrorModal());
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) this.closeErrorModal();
+    });
+  },
+
+  /**
+   * Obsługa przeciągania plików metodą Przeciągnij i Upuść (Drag and Drop).
+   */
+  bindDragAndDrop() {
+    const workspace = document.querySelector('.workspace');
+    if (!workspace) return;
+
+    ['dragenter', 'dragover'].forEach((eventName) => {
+      window.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        workspace.classList.add('drag-over');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach((eventName) => {
+      window.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.target === workspace || !workspace.contains(e.relatedTarget)) {
+          workspace.classList.remove('drag-over');
+        }
+      });
+    });
+
+    window.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      workspace.classList.remove('drag-over');
+
+      const file = e.dataTransfer?.files?.[0];
+      if (file && window.PaintFiles) {
+        window.PaintFiles.loadImageFromFile(file);
+      }
+    });
+  },
+
+  /**
+   * Wyświetla informacje o wczytanym pliku w pasku stanu i przygotowuje modal informacji (Wymóg 3).
+   * @param {{ name: string, type: string, width: number, height: number, maxVal: number, comments: string[] }} info 
+   */
+  displayFileInfo(info) {
+    if (!info) return;
+
+    // 1. Aktualizacja plakietki w pasku stanu
+    const badge = document.getElementById('status-ppm-badge');
+    if (badge) {
+      badge.style.display = 'inline-flex';
+      badge.textContent = `PPM ${info.type} · ${info.width}×${info.height} · max: ${info.maxVal}`;
+    }
+
+    // 2. Podpowiedź w pasku stanu
+    const hintEl = document.getElementById('status-tool-hint');
+    if (hintEl) {
+      hintEl.textContent = `Wczytano plik PPM (${info.type}): ${info.width} × ${info.height} px, maxVal: ${info.maxVal}`;
+    }
+
+    // 3. Pływające powiadomienie Toast
+    this.showToast(`Wczytano plik PPM (${info.type}): ${info.width} × ${info.height} px, maxVal: ${info.maxVal}`);
+  },
+
+  /**
+   * Czyści wskaźniki pliku w pasku stanu.
+   */
+  clearFileInfoDisplay() {
+    const badge = document.getElementById('status-ppm-badge');
+    if (badge) {
+      badge.style.display = 'none';
+      badge.textContent = 'PPM';
+    }
+  },
+
+  /**
+   * Otwiera modal informacji o pliku z danymi bieżącego obrazu.
+   */
+  openFileInfoModal() {
+    const modal = document.getElementById('file-info-modal');
+    if (!modal) return;
+
+    const info = window.PaintState.currentFileInfo || {
+      name: 'Nowy dokument (bez nazwy)',
+      type: 'Brak (kanwa robocza)',
+      width: window.PaintCanvas.mainCanvas.width,
+      height: window.PaintCanvas.mainCanvas.height,
+      maxVal: 255,
+      comments: []
+    };
+
+    const nameEl = document.getElementById('info-file-name');
+    const typeEl = document.getElementById('info-file-type');
+    const dimEl = document.getElementById('info-file-dimensions');
+    const maxValEl = document.getElementById('info-file-maxval');
+    const pixelsEl = document.getElementById('info-file-pixels');
+    const commentsEl = document.getElementById('info-file-comments');
+
+    if (nameEl) nameEl.textContent = info.name || 'Dokument Paint';
+    if (typeEl) {
+      if (info.type === 'P3') typeEl.textContent = 'PPM P3 (tekstowy / ASCII)';
+      else if (info.type === 'P6') typeEl.textContent = 'PPM P6 (binarny / Raw)';
+      else typeEl.textContent = info.type;
+    }
+    if (dimEl) dimEl.textContent = `${info.width} × ${info.height} px`;
+    if (maxValEl) maxValEl.textContent = `${info.maxVal}`;
+    if (pixelsEl) pixelsEl.textContent = `${(info.width * info.height).toLocaleString('pl-PL')} pikseli`;
+
+    if (commentsEl) {
+      if (info.comments && info.comments.length > 0) {
+        commentsEl.textContent = info.comments.map((c) => `# ${c}`).join('\n');
+      } else {
+        commentsEl.textContent = 'Brak komentarzy w nagłówku pliku.';
+      }
+    }
+
+    modal.classList.add('open');
+  },
+
+  /**
+   * Zamyka modal informacji o pliku.
+   */
+  closeFileInfoModal() {
+    const modal = document.getElementById('file-info-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  /**
+   * Otwiera modal z komunikatem błędu (Wymóg 4).
+   * @param {string} title 
+   * @param {string} message 
+   */
+  showErrorModal(title, message) {
+    const modal = document.getElementById('error-modal');
+    if (!modal) {
+      alert(`${title}: ${message}`);
+      return;
+    }
+
+    const titleEl = document.getElementById('error-modal-title');
+    const msgEl = document.getElementById('error-modal-message');
+
+    if (titleEl) titleEl.textContent = title || 'Błąd pliku';
+    if (msgEl) msgEl.textContent = message || 'Wystąpił nieoczekiwany błąd.';
+
+    modal.classList.add('open');
+  },
+
+  /**
+   * Zamyka modal błędu.
+   */
+  closeErrorModal() {
+    const modal = document.getElementById('error-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  /**
+   * Wyświetla pływające powiadomienie Toast na dole ekranu.
+   * @param {string} message 
+   * @param {number} [duration=3500] 
+   */
+  showToast(message, duration = 3500) {
+    const toast = document.getElementById('toast-notification');
+    if (!toast) return;
+
+    toast.textContent = message;
+    toast.style.display = 'flex';
+    toast.classList.remove('hide');
+
+    if (this._toastTimer) clearTimeout(this._toastTimer);
+
+    this._toastTimer = setTimeout(() => {
+      toast.classList.add('hide');
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 300);
+    }, duration);
   }
 };

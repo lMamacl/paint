@@ -30,12 +30,25 @@ Projekt działa natywnie w dowolnej nowoczesnej przeglądarce internetowej. Nie 
   - Dynamiczny zoom (25% – 500%), siatka pomocnicza, dopasowanie do ekranu.
   - Próbnik kolorów podstawowego i wypełnienia, szybka zamiana kolorów (skrót `X`).
   - Skróty klawiszowe dla narzędzi i operacji (`Ctrl+Z`, `Ctrl+Y`, `Ctrl+S`, `Escape`, `P`, `E`, `L`, `R`, `O`, `B`).
-- **Pliki i eksport:**
-  - Otwieranie plików graficznych (PNG, JPG, WebP, BMP) z automatycznym dopasowaniem rozmiaru płótna.
-  - Eksport do formatu PNG (z opcją przezroczystości) oraz JPG (z suwakiem jakości kompresji).
+- **Pliki, format PPM i eksport (Ćwiczenie 2):**
+  - **Samodzielny moduł Netpbm PPM (`js/ppm.js`):** Odczyt i zapis formatów PPM P3 (tekstowy / ASCII) oraz P6 (binarny / Raw) bez zewnętrznych bibliotek (czysty JavaScript, TypedArrays, Blob).
+  - **Odporny parser nagłówków:** Pełna obsługa komentarzy (`#`) w dowolnym miejscu nagłówka i strumienia danych, wieloplatformowe końce linii (CRLF / LF), wielokrotne spacje i tabulatory.
+  - **Dynamiczne skalowanie kolorów:** Obsługa dowolnej wartości `maxVal` (1–65535), w tym próbek 16-bitowych Big-Endian w P6 oraz próbek o małej głębi (np. `maxVal = 15`), automatycznie skalowanych do 8-bitowego kanału Canvas (0–255).
+  - **Inspekcja i prezentacja metadanych:** Wyświetlanie typu pliku, wymiarów i `maxVal` w pasku stanu (interaktywna plakietka PPM) oraz w dedykowanym oknie dialogowym informacji o pliku wraz z pełną listą komentarzy nagłówka.
+  - **Odporność na błędy:** Dedykowany modal błędu informujący o uszkodzonych plikach (ucięty raster), niepoprawnych parametrach czy nieobsługiwanych formatach (np. P1 PBM, P2 PGM) zamiast zawieszenia programu.
+  - **Wielokanałowy import:** Wczytywanie plików z dysku przez okno dialogowe oraz metodą przeciągnij i upuść (Drag and Drop).
+  - **Eksport wieloformatowy:** Zintegrowany modal zapisu z wyborem PPM P6 (binarny), PPM P3 (tekstowy, wiersze <= 70 znaków zgodnie ze specyfikacją Netpbm), PNG (z przezroczystością) oraz JPG (z jakością kompresji).
+
+## Weryfikacja działania formatu PPM w aplikacji
+
+Działanie formatu PPM można w prosty sposób sprawdzić bezpośrednio w interfejsie graficznym:
+1. **Zapis do PPM:** Narysuj dowolny kształt na płótnie, kliknij przycisk **Zapisz** (lub wciśnij `Ctrl+S`), wybierz format **PPM P6** (binarny) lub **PPM P3** (tekstowy ASCII) i pobierz plik `.ppm`.
+2. **Odczyt z PPM:** Kliknij przycisk **Otwórz** (lub `Ctrl+O`) albo po prostu **przeciągnij i upuść (Drag and Drop)** plik `.ppm` (własny lub dostarczony przez prowadzącego) bezpośrednio na obszar roboczy.
+3. **Inspekcja nagłówka:** Po wczytaniu w pasku stanu u dołu ekranu pojawi się plakietka `PPM P3/P6 · W×H · max: N`. Kliknięcie na nią lub w przycisk **Informacje o pliku** w górnym menu otworzy szczegółowe okno z parametrami oraz komentarzami `#` z nagłówka.
+4. **Obsługa błędów:** W przypadku próby otwarcia uszkodzonego pliku, uciętych danych lub innego formatu (np. PBM P1) aplikacja wyświetli przyjazne okno dialogowe z opisem problemu zamiast zawieszenia programu.
 
 ## Świadomie NIE zaimplementowane (kierunki dalszego rozwoju)
 
 - **Warstwy:** Projekt operuje na pojedynczej płaszczyźnie pikseli (dokument jednoarkuszowy). Warstwy stanowią planowany kierunek rozbudowy.
 - **Pipeta, narzędzie tekstowe, lasso:** Świadomie odłożone w bieżącej wersji.
-- **Własny format projektu:** Bieżąca wersja operuje na standardowych formatach rastrowych (PNG/JPG).
+- **Własny format projektu:** Bieżąca wersja operuje na formatach PPM (P3, P6), PNG oraz JPG.

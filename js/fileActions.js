@@ -2,9 +2,10 @@
  * js/fileActions.js
  * Obsługa operacji wejścia/wyjścia (I/O):
  * - Nowy dokument
- * - Wczytywanie pliku obrazu z dysku (z dopasowaniem wymiarów i zoomu)
- * - Ujednolicony modal zapisu obrazu (PNG / JPG)
- * - Wybór przezroczystego tła dla PNG oraz regulacja jakości kompresji dla JPG
+ * - Wczytywanie plików obrazów z dysku (PPM P3/P6 oraz standardowych PNG, JPG, WebP, BMP)
+ * - Obsługa błędów uszkodzonych i nieobsługiwanych plików graficznych
+ * - Zapis do formatów PPM (P3 tekstowy oraz P6 binarny), PNG oraz JPG
+ * - Pobieranie plików z poziomu przeglądarki
  */
 
 window.PaintFiles = {
@@ -12,7 +13,6 @@ window.PaintFiles = {
    * Tworzy nowy, czysty dokument (1024 × 640 px z białym tłem).
    */
   newDocument() {
-    // v2: pytamy o zgodę tylko wtedy, gdy są NIEZAPISANE zmiany
     if (window.PaintCanvas.history && window.PaintCanvas.history.isDirty) {
       if (!confirm('Utworzenie nowego dokumentu spowoduje utratę niezapisanego rysunku. Kontynuować?')) {
         return;
@@ -23,13 +23,20 @@ window.PaintFiles = {
     window.PaintCanvas.history.reset();
     window.PaintCanvas.history.markClean();
     window.PaintCanvas.fitToScreen();
+
+    // Reset informacji o bieżącym pliku
+    if (window.PaintState) {
+      window.PaintState.set('currentFileInfo', null);
+    }
+    if (window.PaintUI && window.PaintUI.clearFileInfoDisplay) {
+      window.PaintUI.clearFileInfoDisplay();
+    }
   },
 
   /**
    * Otwiera okno dialogowe wyboru pliku i wczytuje obraz na kanwę.
    */
   openImageFile() {
-    // v2: pytamy o zgodę tylko wtedy, gdy są NIEZAPISANE zmiany
     if (window.PaintCanvas.history && window.PaintCanvas.history.isDirty) {
       if (!confirm('Wczytanie nowego obrazu zastąpi obecny rysunek. Kontynuować?')) {
         return;
@@ -38,7 +45,7 @@ window.PaintFiles = {
 
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/png, image/jpeg, image/webp, image/bmp';
+    input.accept = '.ppm, .pnm, image/x-portable-pixmap, image/png, image/jpeg, image/webp, image/bmp';
 
     input.onchange = (e) => {
       const file = e.target.files?.[0];
@@ -50,32 +57,144 @@ window.PaintFiles = {
   },
 
   /**
-   * Wczytuje obiekt File lub Blob na płótno.
+   * Wczytuje obiekt File na płótno z automatycznym rozpoznaniem formatu PPM lub standardowych formatów rastrowych.
+   * @param {File} file 
    */
   loadImageFromFile(file) {
+    if (!file) return;
+
     const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        // Dopasuj fizyczne wymiary kanwy do otwartego obrazu
-        window.PaintCanvas.setDimensions(img.naturalWidth, img.naturalHeight);
 
-        // Narysuj wczytany obraz na głównym płótnie
-        const { mainCtx } = window.PaintCanvas;
-        mainCtx.fillStyle = '#ffffff';
-        mainCtx.fillRect(0, 0, img.naturalWidth, img.naturalHeight);
-        mainCtx.drawImage(img, 0, 0);
-
-        // Zresetuj historię, ustawiając wczytany obraz jako punkt odniesienia
-        window.PaintCanvas.history.reset();
-        window.PaintCanvas.history.markClean();
-
-        // Dopasuj zoom do ekranu
-        window.PaintCanvas.fitToScreen();
-      };
-      img.src = event.target.result;
+    reader.onerror = () => {
+      if (window.PaintUI && window.PaintUI.showErrorModal) {
+        window.PaintUI.showErrorModal('Błąd odczytu pliku', `Nie udało się odczytać pliku "${file.name}" z dysku.`);
+      } else {
+        alert(`Błąd odczytu pliku: ${file.name}`);
+      }
     };
-    reader.readAsDataURL(file);
+
+    reader.onload = (event) => {
+      const arrayBuffer = event.target.result;
+      if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+        if (window.PaintUI && window.PaintUI.showErrorModal) {
+          window.PaintUI.showErrorModal('Pusty plik', `Plik "${file.name}" jest pusty (0 bajtów).`);
+        } else {
+          alert('Wybrany plik jest pusty.');
+        }
+        return;
+      }
+
+      // Sprawdzenie czy plik jest formatem Netpbm / PPM na podstawie pierwszych bajtów lub rozszerzenia
+      const headerBytes = new Uint8Array(arrayBuffer.slice(0, 3));
+      const isNetpbmSignature = headerBytes[0] === 0x50 && // 'P'
+        (headerBytes[1] >= 0x31 && headerBytes[1] <= 0x36); // '1' - '6'
+      const isPpmExtension = /\.(ppm|pnm)$/i.test(file.name);
+
+      if (isNetpbmSignature || isPpmExtension) {
+        // Ścieżka parsera PPM
+        try {
+          if (!window.PaintPPM || !window.PaintPPM.parse) {
+            throw new Error('Moduł parsera PPM (window.PaintPPM) nie został załadowany.');
+          }
+
+          const result = window.PaintPPM.parse(arrayBuffer);
+
+          // Ustaw wymiary kanwy odpowiadające obrazowi PPM
+          window.PaintCanvas.setDimensions(result.width, result.height);
+
+          // Wklej zdekodowane piksele na główne płótno
+          const { mainCtx } = window.PaintCanvas;
+          mainCtx.putImageData(result.imageData, 0, 0);
+
+          // Wyczyszczenie nakładki podglądu
+          window.PaintCanvas.clearOverlay();
+
+          // Zresetowanie historii operacji z oznaczeniem czystego stanu
+          window.PaintCanvas.history.reset();
+          window.PaintCanvas.history.markClean();
+
+          // Dopasowanie powiększenia do okna roboczego
+          window.PaintCanvas.fitToScreen();
+
+          // Zapisanie metadanych pliku w stanie aplikacji
+          const fileInfo = {
+            name: file.name,
+            type: result.type,
+            width: result.width,
+            height: result.height,
+            maxVal: result.maxVal,
+            comments: result.comments
+          };
+          window.PaintState.set('currentFileInfo', fileInfo);
+
+          // Wyświetlenie informacji o nagłówku użytkownikowi w UI
+          if (window.PaintUI && window.PaintUI.displayFileInfo) {
+            window.PaintUI.displayFileInfo(fileInfo);
+          }
+        } catch (err) {
+          console.error('Błąd parsowania pliku PPM:', err);
+          if (window.PaintUI && window.PaintUI.showErrorModal) {
+            window.PaintUI.showErrorModal(
+              'Błąd pliku PPM',
+              err.message || 'Wystąpił błąd podczas dekodowania pliku PPM.'
+            );
+          } else {
+            alert(`Błąd pliku PPM: ${err.message}`);
+          }
+        }
+      } else {
+        // Standardowy obraz rastrowy (PNG, JPEG, WebP, BMP)
+        const blob = new Blob([arrayBuffer], { type: file.type || 'image/png' });
+        const blobUrl = URL.createObjectURL(blob);
+        const img = new Image();
+
+        img.onload = () => {
+          URL.revokeObjectURL(blobUrl);
+
+          window.PaintCanvas.setDimensions(img.naturalWidth, img.naturalHeight);
+
+          const { mainCtx } = window.PaintCanvas;
+          mainCtx.fillStyle = '#ffffff';
+          mainCtx.fillRect(0, 0, img.naturalWidth, img.naturalHeight);
+          mainCtx.drawImage(img, 0, 0);
+
+          window.PaintCanvas.clearOverlay();
+          window.PaintCanvas.history.reset();
+          window.PaintCanvas.history.markClean();
+          window.PaintCanvas.fitToScreen();
+
+          const fileInfo = {
+            name: file.name,
+            type: file.type ? file.type.replace('image/', '').toUpperCase() : 'Raster',
+            width: img.naturalWidth,
+            height: img.naturalHeight,
+            maxVal: 255,
+            comments: []
+          };
+          window.PaintState.set('currentFileInfo', fileInfo);
+
+          if (window.PaintUI && window.PaintUI.displayFileInfo) {
+            window.PaintUI.displayFileInfo(fileInfo);
+          }
+        };
+
+        img.onerror = () => {
+          URL.revokeObjectURL(blobUrl);
+          if (window.PaintUI && window.PaintUI.showErrorModal) {
+            window.PaintUI.showErrorModal(
+              'Nieobsługiwany lub uszkodzony plik',
+              `Nie udało się otworzyć pliku "${file.name}". Format pliku nie jest obsługiwany lub dane są uszkodzone.`
+            );
+          } else {
+            alert(`Nie udało się otworzyć pliku "${file.name}".`);
+          }
+        };
+
+        img.src = blobUrl;
+      }
+    };
+
+    reader.readAsArrayBuffer(file);
   },
 
   /**
@@ -107,9 +226,9 @@ window.PaintFiles = {
    * Zapisuje obraz z ustawieniami wybranymi w modalu.
    */
   saveFromModal() {
-    const format = document.querySelector('.btn-save-format.active')?.dataset.format || 'png';
+    const format = document.querySelector('.btn-save-format.active')?.dataset.format || 'ppm-p6';
     const rawName = document.getElementById('save-filename')?.value.trim() || 'rysunek';
-    const cleanName = rawName.replace(/[\/\?<>\\:\*\|":]/g, '');
+    const cleanName = rawName.replace(/[\/\?<>\\:\*\|":]/g, '') || 'rysunek';
 
     const transparent = document.getElementById('save-opt-transparent')?.checked ?? false;
     const qualityPercent = parseInt(document.getElementById('save-quality-slider')?.value || '90', 10);
@@ -121,13 +240,51 @@ window.PaintFiles = {
       }
     };
 
-    if (format === 'png') {
-      this.exportPNG(cleanName, transparent, afterSave);
-    } else {
-      this.exportJPG(cleanName, quality, afterSave);
+    try {
+      if (format === 'ppm-p3') {
+        this.exportPPM(cleanName, 'P3', afterSave);
+      } else if (format === 'ppm-p6') {
+        this.exportPPM(cleanName, 'P6', afterSave);
+      } else if (format === 'png') {
+        this.exportPNG(cleanName, transparent, afterSave);
+      } else if (format === 'jpg') {
+        this.exportJPG(cleanName, quality, afterSave);
+      }
+    } catch (err) {
+      console.error('Błąd zapisu pliku:', err);
+      if (window.PaintUI && window.PaintUI.showErrorModal) {
+        window.PaintUI.showErrorModal('Błąd zapisu', err.message || 'Nie udało się zapisać pliku.');
+      } else {
+        alert(`Błąd zapisu: ${err.message}`);
+      }
     }
 
     this.closeSaveModal();
+  },
+
+  /**
+   * Eksportuje rysunek do formatu Netpbm PPM (P3 lub P6).
+   * @param {string} filename 
+   * @param {'P3'|'P6'} format 
+   * @param {Function} [onDone] 
+   */
+  exportPPM(filename = 'rysunek', format = 'P6', onDone = null) {
+    if (!window.PaintPPM) {
+      throw new Error('Moduł PaintPPM nie został zainicjalizowany.');
+    }
+
+    const { mainCanvas, mainCtx } = window.PaintCanvas;
+    const imgData = mainCtx.getImageData(0, 0, mainCanvas.width, mainCanvas.height);
+
+    let blob;
+    if (format === 'P3') {
+      blob = window.PaintPPM.encodeP3(imgData);
+    } else {
+      blob = window.PaintPPM.encodeP6(imgData);
+    }
+
+    this.downloadBlob(blob, `${filename}.ppm`);
+    if (onDone) onDone();
   },
 
   /**
@@ -139,7 +296,6 @@ window.PaintFiles = {
     let exportCanvas = mainCanvas;
 
     if (transparent) {
-      // Kopia płótna do operacji na kanale alfa
       exportCanvas = document.createElement('canvas');
       exportCanvas.width = mainCanvas.width;
       exportCanvas.height = mainCanvas.height;
@@ -149,10 +305,9 @@ window.PaintFiles = {
       const imgData = ctx.getImageData(0, 0, exportCanvas.width, exportCanvas.height);
       const data = imgData.data;
 
-      // Zastąp czysto białe piksele (#ffffff) pełną przezroczystością
       for (let i = 0; i < data.length; i += 4) {
         if (data[i] === 255 && data[i + 1] === 255 && data[i + 2] === 255) {
-          data[i + 3] = 0; // Kanał Alfa = 0 (przezroczysty)
+          data[i + 3] = 0;
         }
       }
       ctx.putImageData(imgData, 0, 0);
@@ -171,7 +326,6 @@ window.PaintFiles = {
    */
   exportJPG(filename = 'rysunek', quality = 0.90, onDone = null) {
     const mainCanvas = window.PaintCanvas.mainCanvas;
-    // Gwarancja czysto białego podkładu dla formatu JPG (brak kanału alfa)
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = mainCanvas.width;
     exportCanvas.height = mainCanvas.height;

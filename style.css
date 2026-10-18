@@ -902,3 +902,216 @@ input[type="range"]::-webkit-slider-thumb:hover {
   border-top: 1px solid var(--border-color);
 }
 
+/* ==========================================================================
+   ROZSZERZENIA DLA FORMATU PPM, INFORMACJI O PLIKU I OBSŁUGI BŁĘDÓW (ĆW. 2)
+   ========================================================================== */
+
+/* Pole nazwy pliku z plakietką rozszerzenia */
+.input-with-extension {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.input-with-extension .form-input-text {
+  flex: 1;
+  padding-right: 60px;
+}
+
+.extension-badge {
+  position: absolute;
+  right: 10px;
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-hover);
+  background-color: var(--accent-active-bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--accent-primary);
+  pointer-events: none;
+}
+
+/* Opis techniczny formatu w modalu zapisu */
+.format-spec-desc {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.spec-row {
+  display: flex;
+  gap: 6px;
+}
+
+.spec-row strong {
+  color: var(--text-main);
+  min-width: 80px;
+}
+
+/* Plakietka PPM w pasku stanu */
+.status-ppm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--accent-active-bg);
+  color: var(--accent-hover);
+  border: 1px solid var(--accent-primary);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  animation: badge-appear 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.status-ppm-badge:hover {
+  background-color: var(--accent-primary);
+  color: #ffffff;
+}
+
+@keyframes badge-appear {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Siatka właściwości w oknie informacji o pliku */
+.file-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.info-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.info-cell.full-width {
+  grid-column: 1 / -1;
+}
+
+.info-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.info-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.info-value.font-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.info-badge {
+  display: inline-block;
+  color: var(--accent-hover);
+  background-color: var(--accent-active-bg);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  width: fit-content;
+}
+
+/* Kontener komentarzy nagłówka PPM */
+.comments-box {
+  background-color: #0d0d0f;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  color: #34d399; /* szmaragdowy kod */
+  max-height: 120px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* Wariant modalu błędu (Error Modal) */
+.modal-card-error {
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 20px rgba(239, 68, 68, 0.2);
+}
+
+.modal-header-error {
+  border-bottom-color: rgba(239, 68, 68, 0.2);
+  background-color: rgba(239, 68, 68, 0.05);
+}
+
+.modal-title-error {
+  color: #f87171;
+}
+
+.error-message-text {
+  font-size: 13px;
+  color: var(--text-main);
+  line-height: 1.5;
+  background-color: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.btn-danger {
+  background-color: #dc2626;
+  color: #ffffff;
+  border-color: #b91c1c;
+}
+
+.btn-danger:hover {
+  background-color: #ef4444;
+}
+
+/* Pływające powiadomienie Toast */
+.toast-notification {
+  position: fixed;
+  bottom: 44px;
+  left: 20px;
+  background-color: #18181b;
+  border: 1px solid var(--accent-primary);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.8), 0 0 15px var(--accent-glow);
+  color: var(--text-main);
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: toast-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+}
+
+.toast-notification.hide {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Obszar roboczy w trakcie przeciągania pliku (Drag and Drop) */
+.workspace.drag-over {
+  outline: 2px dashed var(--accent-primary);
+  outline-offset: -8px;
+  background-color: rgba(139, 92, 246, 0.05);
+}
+
+
