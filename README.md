@@ -39,9 +39,18 @@ Projekt działa natywnie w dowolnej nowoczesnej przeglądarce internetowej. Nie 
   - **Wielokanałowy import:** Wczytywanie plików z dysku przez okno dialogowe oraz metodą przeciągnij i upuść (Drag and Drop).
   - **Eksport wieloformatowy:** Zintegrowany modal zapisu z wyborem PPM P6 (binarny), PPM P3 (tekstowy, wiersze <= 70 znaków zgodnie ze specyfikacją Netpbm), PNG (z przezroczystością) oraz JPG (z jakością kompresji).
 
-## Weryfikacja działania formatu PPM w aplikacji
+## Weryfikacja działania formatu PPM i testy zautomatyzowane (Wymóg 6)
 
-Działanie formatu PPM można w prosty sposób sprawdzić bezpośrednio w interfejsie graficznym:
+### 1. Zautomatyzowane testy jednostkowe:
+Projekt zawiera kompletny zestaw testów jednostkowych weryfikujących dekodowanie P3/P6, obsługę separatorów, 16-bitowe próbki, komentarze, skalowanie wartości i obsługę błędów:
+- **W konsoli (Node.js):**
+  ```bash
+  node --test tests/ppm.test.js
+  ```
+- **W przeglądarce internetowej:**
+  Otwórz plik `tests/index.html` bezpośrednio w przeglądarce (np. przez podwójne kliknięcie lub `file://`).
+
+### 2. Weryfikacja w aplikacji graficznej:
 1. **Zapis do PPM:** Narysuj dowolny kształt na płótnie, kliknij przycisk **Zapisz** (lub wciśnij `Ctrl+S`), wybierz format **PPM P6** (binarny) lub **PPM P3** (tekstowy ASCII) i pobierz plik `.ppm`.
 2. **Odczyt z PPM:** Kliknij przycisk **Otwórz** (lub `Ctrl+O`) albo po prostu **przeciągnij i upuść (Drag and Drop)** plik `.ppm` (własny lub dostarczony przez prowadzącego) bezpośrednio na obszar roboczy.
 3. **Inspekcja nagłówka:** Po wczytaniu w pasku stanu u dołu ekranu pojawi się plakietka `PPM P3/P6 · W×H · max: N`. Kliknięcie na nią lub w przycisk **Informacje o pliku** w górnym menu otworzy szczegółowe okno z parametrami oraz komentarzami `#` z nagłówka.

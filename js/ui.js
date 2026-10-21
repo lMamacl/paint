@@ -464,6 +464,20 @@ window.PaintUI = {
 
       const statusDim = document.getElementById('status-dimensions');
       if (statusDim) statusDim.textContent = `${width} × ${height} px`;
+
+      // Aktualizacja wymiarów w metadanych bieżącego pliku i odświeżenie plakietki
+      const curInfo = window.PaintState?.currentFileInfo;
+      if (curInfo) {
+        curInfo.width = width;
+        curInfo.height = height;
+        const badge = document.getElementById('status-ppm-badge');
+        if (badge && badge.style.display !== 'none') {
+          const isPPM = curInfo.type === 'P3' || curInfo.type === 'P6';
+          badge.textContent = isPPM
+            ? `PPM ${curInfo.type} · ${width}×${height} · max: ${curInfo.maxVal}`
+            : `${curInfo.type} · ${width}×${height}`;
+        }
+      }
     });
   },
 
@@ -480,6 +494,7 @@ window.PaintUI = {
     const p3Options = document.getElementById('save-ppm-p3-options');
     const pngOptions = document.getElementById('save-png-options');
     const jpgOptions = document.getElementById('save-jpg-options');
+    const commentGroup = document.getElementById('save-comment-group');
     const extBadge = document.getElementById('save-extension-badge');
 
     formatButtons.forEach((btn) => {
@@ -492,6 +507,7 @@ window.PaintUI = {
         if (p3Options) p3Options.style.display = format === 'ppm-p3' ? 'block' : 'none';
         if (pngOptions) pngOptions.style.display = format === 'png' ? 'block' : 'none';
         if (jpgOptions) jpgOptions.style.display = format === 'jpg' ? 'block' : 'none';
+        if (commentGroup) commentGroup.style.display = (format === 'ppm-p6' || format === 'ppm-p3') ? 'block' : 'none';
 
         if (extBadge) {
           if (format === 'ppm-p6' || format === 'ppm-p3') {
@@ -578,25 +594,6 @@ window.PaintUI = {
       window.PaintTools.onPointerUp(e, coords);
     });
 
-    // Obsługa przeciągania pliku obrazu bezpośrednio na kanwę (Drag & Drop)
-    const container = window.PaintCanvas.container;
-    container.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      container.classList.add('drag-over');
-    });
-
-    container.addEventListener('dragleave', () => {
-      container.classList.remove('drag-over');
-    });
-
-    container.addEventListener('drop', (e) => {
-      e.preventDefault();
-      container.classList.remove('drag-over');
-      const file = e.dataTransfer?.files?.[0];
-      if (file && file.type.startsWith('image/')) {
-        window.PaintFiles.loadImageFromFile(file);
-      }
-    });
   },
 
   /**
@@ -865,21 +862,29 @@ window.PaintUI = {
   displayFileInfo(info) {
     if (!info) return;
 
+    const isPPM = info.type === 'P3' || info.type === 'P6';
+
     // 1. Aktualizacja plakietki w pasku stanu
     const badge = document.getElementById('status-ppm-badge');
     if (badge) {
       badge.style.display = 'inline-flex';
-      badge.textContent = `PPM ${info.type} · ${info.width}×${info.height} · max: ${info.maxVal}`;
+      badge.textContent = isPPM
+        ? `PPM ${info.type} · ${info.width}×${info.height} · max: ${info.maxVal}`
+        : `${info.type} · ${info.width}×${info.height}`;
     }
 
     // 2. Podpowiedź w pasku stanu
+    const hintText = isPPM
+      ? `Wczytano plik PPM (${info.type}): ${info.width} × ${info.height} px, maxVal: ${info.maxVal}`
+      : `Wczytano plik ${info.type}: ${info.width} × ${info.height} px`;
+
     const hintEl = document.getElementById('status-tool-hint');
     if (hintEl) {
-      hintEl.textContent = `Wczytano plik PPM (${info.type}): ${info.width} × ${info.height} px, maxVal: ${info.maxVal}`;
+      hintEl.textContent = hintText;
     }
 
     // 3. Pływające powiadomienie Toast
-    this.showToast(`Wczytano plik PPM (${info.type}): ${info.width} × ${info.height} px, maxVal: ${info.maxVal}`);
+    this.showToast(hintText);
   },
 
   /**

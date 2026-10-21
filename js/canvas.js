@@ -82,8 +82,8 @@ window.PaintCanvas = {
    * Ustawia fizyczne wymiary obu płócien w pikselach.
    */
   setDimensions(w, h) {
-    w = Math.max(10, Math.min(8192, Math.round(w)));
-    h = Math.max(10, Math.min(8192, Math.round(h)));
+    w = Math.max(1, Math.min(8192, Math.round(w)));
+    h = Math.max(1, Math.min(8192, Math.round(h)));
 
     this.mainCanvas.width = w;
     this.mainCanvas.height = h;
@@ -105,8 +105,8 @@ window.PaintCanvas = {
    * Zmienia rozmiar kanwy z zachowaniem dotychczasowego rysunku.
    */
   resize(newWidth, newHeight, recordHistory = true) {
-    newWidth = Math.max(10, Math.round(newWidth));
-    newHeight = Math.max(10, Math.round(newHeight));
+    newWidth = Math.max(1, Math.min(8192, Math.round(newWidth)));
+    newHeight = Math.max(1, Math.min(8192, Math.round(newHeight)));
 
     // v2: begin() MUSI być przed setDimensions(), bo zmiana rozmiaru sama zmienia piksele
     if (recordHistory) this.history.begin(this.mainCtx, null);
@@ -184,13 +184,15 @@ window.PaintCanvas = {
     if (!workspace) return;
 
     const pad = 80;
-    const availW = workspace.clientWidth - pad;
-    const availH = workspace.clientHeight - pad;
+    const availW = Math.max(10, workspace.clientWidth - pad);
+    const availH = Math.max(10, workspace.clientHeight - pad);
 
     const scaleX = availW / this.mainCanvas.width;
     const scaleY = availH / this.mainCanvas.height;
-    const fitScale = Math.min(1, Math.min(scaleX, scaleY));
+    // Pozwalamy na powiększenie (zoom > 100%) dla małych obrazów (np. 3×2 px),
+    // ograniczając skalę do maksymalnego zoomu aplikacji (10x / 1000%).
+    const fitScale = Math.min(scaleX, scaleY);
 
-    this.setZoom(Math.max(0.1, Math.floor(fitScale * 100) / 100));
+    this.setZoom(Math.max(0.1, Math.min(10, Math.floor(fitScale * 100) / 100)));
   }
 };

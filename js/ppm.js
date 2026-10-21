@@ -24,6 +24,33 @@
   }
 
   /**
+   * Pomocniczy odczyt pojedynczej linii komentarza (#).
+   * Zakłada, że buffer[state.offset] wskazuje na znak '#' (ASCII 35).
+   * Przewija do końca linii (CR lub LF) i gromadzi tekst komentarza.
+   * @param {Uint8Array} buffer 
+   * @param {{ offset: number }} state 
+   * @param {string[]} [commentsList] 
+   */
+  function readCommentLine(buffer, state, commentsList = null) {
+    state.offset++; // Pomiń znak '#'
+    const commentStart = state.offset;
+    const len = buffer.length;
+    while (state.offset < len && buffer[state.offset] !== 10 && buffer[state.offset] !== 13) {
+      state.offset++;
+    }
+    if (commentsList) {
+      let commentText = '';
+      for (let i = commentStart; i < state.offset; i++) {
+        commentText += String.fromCharCode(buffer[i]);
+      }
+      const trimmed = commentText.trim();
+      if (trimmed.length > 0) {
+        commentsList.push(trimmed);
+      }
+    }
+  }
+
+  /**
    * Pomocniczy skaner pomijający białe znaki i komentarze rozpoczynające się od '#'.
    * Opcjonalnie gromadzi treść komentarzy do przekazania w metadanych pliku.
    * @param {Uint8Array} buffer 
@@ -43,22 +70,7 @@
 
       // Komentarz: kod ASCII 35 to znak '#'
       if (b === 35) {
-        state.offset++;
-        const commentStart = state.offset;
-        // Przewijamy do końca bieżącej linii (LF lub CR)
-        while (state.offset < len && buffer[state.offset] !== 10 && buffer[state.offset] !== 13) {
-          state.offset++;
-        }
-        if (commentsList) {
-          let commentText = '';
-          for (let i = commentStart; i < state.offset; i++) {
-            commentText += String.fromCharCode(buffer[i]);
-          }
-          const trimmed = commentText.trim();
-          if (trimmed.length > 0) {
-            commentsList.push(trimmed);
-          }
-        }
+        readCommentLine(buffer, state, commentsList);
         continue;
       }
 
@@ -130,7 +142,7 @@
     return val;
   }
 
-  window.PaintPPM = {
+  const PaintPPM = {
     PPMError,
 
     /**
@@ -139,8 +151,8 @@
      * @returns {{ type: 'P3'|'P6', width: number, height: number, maxVal: number, comments: string[], imageData: ImageData }}
      */
     parse(arrayBuffer) {
-      if (!arrayBuffer || arrayBuffer.byteLength < 4) {
-        throw new PPMError('Plik jest pusty lub zbyt krótki, aby stanowić poprawny plik graficzny PPM.');
+      if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+        throw new PPMError('Plik jest pusty (0 bajtów).');
       }
 
       const buffer = new Uint8Array(arrayBuffer);
@@ -150,7 +162,7 @@
       // 1. Odczyt sygnatury (Magic Number)
       const magic = readToken(buffer, state, comments);
       if (!magic) {
-        throw new PPMError('Nie znaleziono sygnatury pliku w nagłówku. Plik nie jest poprawnym formatem graficznym.');
+        throw new PPMError('Plik jest zbyt krótki: nie znaleziono sygnatury pliku w nagłówku.');
       }
 
       if (magic !== 'P3' && magic !== 'P6') {
@@ -205,54 +217,52 @@
         const bytesPerSample = is16Bit ? 2 : 1;
         const expectedBytes = totalPixels * 3 * bytesPerSample;
 
-        // Konsumpcja separatora nagłówka i ewentualnych komentarzy przed strumieniem pikseli:
-        // Sprawdzamy czy na linii maxVal znajduje się komentarz
-        while (state.offset < buffer.length && (buffer[state.offset] === 32 || buffer[state.offset] === 9)) {
-          state.offset++;
-        }
-
+        // Konsumpcja separatora nagłówka i opcjonalnego komentarza w linii maxVal:
+        let isInlineComment = false;
         if (state.offset < buffer.length && buffer[state.offset] === 35) {
-          // Komentarz inline bezpośrednio po maxVal
-          state.offset++;
-          const cStart = state.offset;
-          while (state.offset < buffer.length && buffer[state.offset] !== 10 && buffer[state.offset] !== 13) {
-            state.offset++;
+          isInlineComment = true;
+        } else if (state.offset < buffer.length && (buffer[state.offset] === 32 || buffer[state.offset] === 9)) {
+          // Sprawdzamy czy po spacjach/tabulatorach występuje znak '#' komentarza w tej samej linii
+          let p = state.offset;
+          while (p < buffer.length && (buffer[p] === 32 || buffer[p] === 9)) {
+            p++;
           }
-          let cText = '';
-          for (let i = cStart; i < state.offset; i++) cText += String.fromCharCode(buffer[i]);
-          const trimmed = cText.trim();
-          if (trimmed.length > 0) comments.push(trimmed);
-        }
-
-        // Konsumpcja pojedynczego separatora (zwykle znak nowej linii LF lub Windows CRLF)
-        if (state.offset < buffer.length) {
-          if (buffer[state.offset] === 13 && state.offset + 1 < buffer.length && buffer[state.offset + 1] === 10) {
-            state.offset += 2; // Windows CRLF
-          } else if (buffer[state.offset] === 10 || buffer[state.offset] === 13 || buffer[state.offset] === 32 || buffer[state.offset] === 9) {
-            state.offset += 1;
-          }
-        }
-
-        // Jeśli po separatorze występuje dodatkowa linia komentarza (#), bezpiecznie ją pomijamy
-        // (tylko gdy za komentarzem nadal pozostaje pełny oczekiwany raster)
-        while (state.offset < buffer.length && buffer[state.offset] === 35 && (buffer.length - state.offset) > expectedBytes) {
-          state.offset++;
-          const cStart = state.offset;
-          while (state.offset < buffer.length && buffer[state.offset] !== 10 && buffer[state.offset] !== 13) {
-            state.offset++;
-          }
-          let cText = '';
-          for (let i = cStart; i < state.offset; i++) cText += String.fromCharCode(buffer[i]);
-          const trimmed = cText.trim();
-          if (trimmed.length > 0) comments.push(trimmed);
-
-          if (state.offset < buffer.length && buffer[state.offset] === 13 && state.offset + 1 < buffer.length && buffer[state.offset + 1] === 10) {
-            state.offset += 2;
-          } else if (state.offset < buffer.length && (buffer[state.offset] === 10 || buffer[state.offset] === 13)) {
-            state.offset++;
+          if (p < buffer.length && buffer[p] === 35) {
+            let nl = p + 1;
+            while (nl < buffer.length && buffer[nl] !== 10 && buffer[nl] !== 13) {
+              nl++;
+            }
+            const afterNl = (nl < buffer.length && buffer[nl] === 13 && nl + 1 < buffer.length && buffer[nl + 1] === 10) ? nl + 2 : nl + 1;
+            if (buffer.length - afterNl >= expectedBytes) {
+              state.offset = p;
+              isInlineComment = true;
+            }
           }
         }
 
+        if (isInlineComment) {
+          readCommentLine(buffer, state, comments);
+          // Zużyj znak nowej linii kończący komentarz
+          if (state.offset < buffer.length) {
+            if (buffer[state.offset] === 13 && state.offset + 1 < buffer.length && buffer[state.offset + 1] === 10) {
+              state.offset += 2; // CRLF
+            } else if (buffer[state.offset] === 10 || buffer[state.offset] === 13) {
+              state.offset += 1;
+            }
+          }
+        } else {
+          // Zużyj dokładnie jeden biały znak (lub Windows CRLF) jako separator nagłówka od danych rastrowych
+          if (state.offset < buffer.length) {
+            if (buffer[state.offset] === 13 && state.offset + 1 < buffer.length && buffer[state.offset + 1] === 10) {
+              state.offset += 2; // Windows CRLF
+            } else if (buffer[state.offset] === 10 || buffer[state.offset] === 13 || buffer[state.offset] === 32 || buffer[state.offset] === 9) {
+              state.offset += 1; // Dokładnie 1 biały znak (LF, CR, spacja lub tab)
+            }
+          }
+        }
+
+        // Zgodnie ze specyfikacją Netpbm dane binarne P6 rozpoczynają się bezpośrednio po pojedynczym separatorze
+        // i nie dopuszczają żadnych komentarzy wewnątrz rastra.
         const availableBytes = buffer.length - state.offset;
         if (availableBytes < expectedBytes) {
           throw new PPMError(`Plik P6 jest uszkodzony lub ucięty. Oczekiwano ${expectedBytes} bajtów danych rastrowych (${width} × ${height} pikseli), a plik zawiera tylko ${availableBytes} bajtów.`);
@@ -272,12 +282,21 @@
             dstIdx += 4;
           }
         } else if (!is16Bit) {
-          // maxVal < 255 (skalowanie proporcjonalne do pełnego zakresu 0 - 255)
+          // maxVal < 255 (skalowanie proporcjonalne do pełnego zakresu 0 - 255 z walidacją)
           const scale = 255 / maxVal;
           for (let i = 0; i < totalPixels; i++) {
-            rgba[dstIdx]     = Math.min(255, Math.round(buffer[srcIdx] * scale));
-            rgba[dstIdx + 1] = Math.min(255, Math.round(buffer[srcIdx + 1] * scale));
-            rgba[dstIdx + 2] = Math.min(255, Math.round(buffer[srcIdx + 2] * scale));
+            const r = buffer[srcIdx];
+            const g = buffer[srcIdx + 1];
+            const b = buffer[srcIdx + 2];
+
+            if (r > maxVal || g > maxVal || b > maxVal) {
+              const inv = Math.max(r, g, b);
+              throw new PPMError(`Wartość składowej koloru (${inv}) przekracza zadeklarowane maxVal (${maxVal}) przy pikselu ${i}.`);
+            }
+
+            rgba[dstIdx]     = Math.min(255, Math.round(r * scale));
+            rgba[dstIdx + 1] = Math.min(255, Math.round(g * scale));
+            rgba[dstIdx + 2] = Math.min(255, Math.round(b * scale));
             rgba[dstIdx + 3] = 255;
             srcIdx += 3;
             dstIdx += 4;
@@ -289,6 +308,11 @@
             const r16 = (buffer[srcIdx] << 8) | buffer[srcIdx + 1];
             const g16 = (buffer[srcIdx + 2] << 8) | buffer[srcIdx + 3];
             const b16 = (buffer[srcIdx + 4] << 8) | buffer[srcIdx + 5];
+
+            if (r16 > maxVal || g16 > maxVal || b16 > maxVal) {
+              const inv = Math.max(r16, g16, b16);
+              throw new PPMError(`Wartość 16-bitowej składowej koloru (${inv}) przekracza zadeklarowane maxVal (${maxVal}) przy pikselu ${i}.`);
+            }
 
             rgba[dstIdx]     = Math.min(255, Math.round(r16 * scale));
             rgba[dstIdx + 1] = Math.min(255, Math.round(g16 * scale));
@@ -318,9 +342,14 @@
             throw new PPMError(`Nieprawidłowe wartości w strumieniu pikseli P3 przy pikselu ${i}. Oczekiwano nieujemnych liczb całkowitych.`);
           }
 
-          rgba[dstIdx]     = scale === 1 ? Math.min(255, r) : Math.min(255, Math.round(r * scale));
-          rgba[dstIdx + 1] = scale === 1 ? Math.min(255, g) : Math.min(255, Math.round(g * scale));
-          rgba[dstIdx + 2] = scale === 1 ? Math.min(255, b) : Math.min(255, Math.round(b * scale));
+          if (r > maxVal || g > maxVal || b > maxVal) {
+            const inv = Math.max(r, g, b);
+            throw new PPMError(`Wartość składowej koloru (${inv}) przekracza zadeklarowane maxVal (${maxVal}) przy pikselu ${i}.`);
+          }
+
+          rgba[dstIdx]     = scale === 1 ? r : Math.min(255, Math.round(r * scale));
+          rgba[dstIdx + 1] = scale === 1 ? g : Math.min(255, Math.round(g * scale));
+          rgba[dstIdx + 2] = scale === 1 ? b : Math.min(255, Math.round(b * scale));
           rgba[dstIdx + 3] = 255;
           dstIdx += 4;
         }
@@ -348,7 +377,9 @@
       }
 
       const { width, height, data } = imageData;
-      const customComment = options.comment ? `# ${options.comment}\n` : '# Utworzono w GK Paint\n';
+      const rawComment = (options && options.comment !== undefined) ? String(options.comment) : 'Utworzono w GK Paint';
+      const cleanComment = rawComment.replace(/[\r\n]+/g, ' ').trim();
+      const customComment = cleanComment ? `# ${cleanComment}\n` : '';
       const headerStr = `P6\n${customComment}${width} ${height}\n255\n`;
       const headerBytes = new TextEncoder().encode(headerStr);
 
@@ -381,7 +412,7 @@
     /**
      * Eksportuje obiekt ImageData do formatu tekstowego PPM P3.
      * Zgodnie ze specyfikacją Netpbm: linie nie przekraczają 70 znaków.
-     * Używa buforowania blokowego zapobiegającego zamrażaniu interfejsu.
+     * Używa buforowania blokowego (bloki 64 KiB) optymalizującego alokację pamięci w silniku V8 podczas synchronicznego generowania tekstu.
      * @param {ImageData} imageData 
      * @param {{ comment?: string }} [options]
      * @returns {Blob}
@@ -392,7 +423,9 @@
       }
 
       const { width, height, data } = imageData;
-      const customComment = options.comment ? `# ${options.comment}\n` : '# Utworzono w GK Paint\n';
+      const rawComment = (options && options.comment !== undefined) ? String(options.comment) : 'Utworzono w GK Paint';
+      const cleanComment = rawComment.replace(/[\r\n]+/g, ' ').trim();
+      const customComment = cleanComment ? `# ${cleanComment}\n` : '';
       const chunks = [];
       chunks.push(`P3\n${customComment}${width} ${height}\n255\n`);
 
@@ -442,4 +475,11 @@
       return new Blob(chunks, { type: 'image/x-portable-pixmap' });
     }
   };
+
+  if (typeof window !== 'undefined') {
+    window.PaintPPM = PaintPPM;
+  }
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = PaintPPM;
+  }
 })();
