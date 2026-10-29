@@ -9,6 +9,9 @@
  */
 
 window.PaintUI = {
+  colorFormat: 'rgb',
+  hoveredCanvasCoords: null,
+
   init() {
     this.bindToolButtons();
     this.bindToolOptions();
@@ -24,6 +27,10 @@ window.PaintUI = {
     this.bindStateObservers();
     this.updateToolOptionsVisibility();
     this.updateColorDisplays();
+
+    // Ćwiczenie 3: panel modeli barw i okno operacji na obrazie
+    if (window.PaintColorPanel) window.PaintColorPanel.init();
+    if (window.PaintCompareView) window.PaintCompareView.init();
   },
 
   /**
@@ -63,12 +70,14 @@ window.PaintUI = {
     const optLine = document.getElementById('opt-line');
     const optShape = document.getElementById('opt-shape');
     const optBucket = document.getElementById('opt-bucket');
+    const optEyedropper = document.getElementById('opt-eyedropper');
 
     if (optPencil) optPencil.style.display = tool === 'pencil' ? 'flex' : 'none';
     if (optEraser) optEraser.style.display = tool === 'eraser' ? 'flex' : 'none';
     if (optLine) optLine.style.display = tool === 'line' ? 'flex' : 'none';
     if (optShape) optShape.style.display = (tool === 'rect' || tool === 'ellipse') ? 'flex' : 'none';
     if (optBucket) optBucket.style.display = tool === 'bucket' ? 'flex' : 'none';
+    if (optEyedropper) optEyedropper.style.display = tool === 'eyedropper' ? 'flex' : 'none';
 
     // Synchronizacja stanu kontrolek w widocznym panelu
     this.syncDashStyleUI(window.PaintState.lineDash);
@@ -83,7 +92,8 @@ window.PaintUI = {
       line: 'Linia',
       rect: 'Prostokąt',
       ellipse: 'Elipsa',
-      bucket: 'Wiadro z farbą'
+      bucket: 'Wiadro z farbą',
+      eyedropper: 'Pipeta'
     };
     if (labelEl) labelEl.textContent = names[tool] || tool;
   },
@@ -206,12 +216,9 @@ window.PaintUI = {
       });
     }
 
-    const inputBucketColor = document.getElementById('input-bucket-color');
-    if (inputBucketColor) {
-      inputBucketColor.addEventListener('input', (e) => {
-        window.PaintState.set('fillColor', e.target.value);
-        this.updateColorDisplays();
-      });
+    const previewBucketColor = document.getElementById('preview-bucket-color');
+    if (previewBucketColor) {
+      previewBucketColor.addEventListener('click', () => this.openColorPicker('fill'));
     }
   },
 
@@ -219,7 +226,7 @@ window.PaintUI = {
    * Ustawia aktywny cel edycji koloru: 'stroke' (obrys) lub 'fill' (wypełnienie).
    */
   setActiveColorTarget(target) {
-    window.PaintState.activeColorTarget = target;
+    window.PaintState.set('activeColorTarget', target);
     const swatchStroke = document.getElementById('preview-stroke-color');
     const swatchFill = document.getElementById('preview-fill-color');
     const rowStroke = document.getElementById('row-stroke-color');
@@ -230,13 +237,31 @@ window.PaintUI = {
     if (rowStroke) rowStroke.classList.toggle('active', target === 'stroke');
     if (rowFill) rowFill.classList.toggle('active', target === 'fill');
 
-    const hint = document.querySelector('.palette-hint');
-    if (hint) {
-      if (target === 'stroke') {
-        hint.textContent = 'Aktywny: Obrys · Klik: zmiana obrysu · Shift/PPM: wypełnienie';
-      } else {
-        hint.textContent = 'Aktywny: Wypełnienie · Klik: zmiana wypełnienia · Shift/PPM: obrys';
-      }
+    // panel modeli barw edytuje aktywny kolor — pokaż wartości właściwego celu
+    if (window.PaintColorPanel) window.PaintColorPanel.refresh();
+    const pickerModal = document.getElementById('color-picker-modal');
+    const pickerTitle = document.getElementById('color-picker-title');
+    if (pickerModal && pickerModal.classList.contains('open') && pickerTitle) {
+      pickerTitle.textContent = target === 'fill' ? 'Edytuj kolor wypełnienia' : 'Edytuj kolor obrysu';
+    }
+  },
+
+  openColorPicker(target) {
+    this.setActiveColorTarget(target);
+    const modal = document.getElementById('color-picker-modal');
+    const title = document.getElementById('color-picker-title');
+    if (title) title.textContent = target === 'fill' ? 'Edytuj kolor wypełnienia' : 'Edytuj kolor obrysu';
+    if (modal) modal.classList.add('open');
+  },
+
+  closeColorPicker() {
+    const modal = document.getElementById('color-picker-modal');
+    if (modal) modal.classList.remove('open');
+  },
+
+  cancelImagePreview() {
+    if (window.PaintCompareView && window.PaintCompareView.active) {
+      window.PaintCompareView.cancel();
     }
   },
 
@@ -244,50 +269,43 @@ window.PaintUI = {
    * Obsługa wyboru kolorów, nakładających się próbników i palety barw.
    */
   bindColorPanel() {
-    const inputStroke = document.getElementById('input-stroke-color');
-    const inputFill = document.getElementById('input-fill-color');
     const previewStroke = document.getElementById('preview-stroke-color');
     const previewFill = document.getElementById('preview-fill-color');
     const rowStroke = document.getElementById('row-stroke-color');
     const rowFill = document.getElementById('row-fill-color');
 
-    // Kolor obrysu z systemowego próbnika
-    if (inputStroke) {
-      inputStroke.addEventListener('input', (e) => {
-        window.PaintState.set('strokeColor', e.target.value);
-        this.setActiveColorTarget('stroke');
-        this.updateColorDisplays();
-      });
-    }
-
-    // Kolor wypełnienia z systemowego próbnika
-    if (inputFill) {
-      inputFill.addEventListener('input', (e) => {
-        window.PaintState.set('fillColor', e.target.value);
-        this.setActiveColorTarget('fill');
-        this.updateColorDisplays();
-      });
-    }
-
-    // Kliknięcie w próbnik obrysu lub etykietę aktywuje obrys
+    // Kliknięcie próbki otwiera edytor modeli dla tego koloru.
     if (previewStroke) {
-      previewStroke.addEventListener('click', (e) => {
-        if (e.target !== inputStroke) this.setActiveColorTarget('stroke');
-      });
+      previewStroke.addEventListener('click', () => this.openColorPicker('stroke'));
     }
     if (rowStroke) {
       rowStroke.addEventListener('click', () => this.setActiveColorTarget('stroke'));
     }
 
-    // Kliknięcie w próbnik wypełnienia lub etykietę aktywuje wypełnienie
+    // Kliknięcie próbki otwiera edytor modeli dla tego koloru.
     if (previewFill) {
-      previewFill.addEventListener('click', (e) => {
-        if (e.target !== inputFill) this.setActiveColorTarget('fill');
-      });
+      previewFill.addEventListener('click', () => this.openColorPicker('fill'));
     }
     if (rowFill) {
       rowFill.addEventListener('click', () => this.setActiveColorTarget('fill'));
     }
+
+    const colorModal = document.getElementById('color-picker-modal');
+    ['btn-color-picker-close', 'btn-color-picker-done'].forEach((id) => {
+      const button = document.getElementById(id);
+      if (button) button.addEventListener('click', () => this.closeColorPicker());
+    });
+    if (colorModal) {
+      colorModal.addEventListener('mousedown', (e) => {
+        if (e.target === colorModal) this.closeColorPicker();
+      });
+    }
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && colorModal && colorModal.classList.contains('open')) {
+        e.preventDefault();
+        this.closeColorPicker();
+      }
+    });
 
     // Zamiana kolorów (X)
     const btnSwap = document.getElementById('btn-swap-colors');
@@ -344,19 +362,13 @@ window.PaintUI = {
    * Aktualizuje podgląd wizualny kolorów w panelu oraz w pasku narzędzi.
    */
   updateColorDisplays() {
-    const inputStroke = document.getElementById('input-stroke-color');
-    const inputFill = document.getElementById('input-fill-color');
     const previewStroke = document.getElementById('preview-stroke-color');
     const previewFill = document.getElementById('preview-fill-color');
     const hexStroke = document.getElementById('hex-stroke-color');
     const hexFill = document.getElementById('hex-fill-color');
 
     const previewBucket = document.getElementById('preview-bucket-color');
-    const inputBucket = document.getElementById('input-bucket-color');
     const hexBucket = document.getElementById('hex-bucket-color');
-
-    if (inputStroke) inputStroke.value = window.PaintState.strokeColor;
-    if (inputFill) inputFill.value = window.PaintState.fillColor;
 
     if (previewStroke) previewStroke.style.backgroundColor = window.PaintState.strokeColor;
     if (previewFill) previewFill.style.backgroundColor = window.PaintState.fillColor;
@@ -366,30 +378,38 @@ window.PaintUI = {
 
     // Synchronizacja wskaźnika koloru wiadra
     if (previewBucket) previewBucket.style.backgroundColor = window.PaintState.fillColor;
-    if (inputBucket) inputBucket.value = window.PaintState.fillColor;
     if (hexBucket) hexBucket.textContent = window.PaintState.fillColor.toUpperCase();
+
+    // kolor mógł zmienić się spoza panelu modeli barw (paleta, zamiana, reset)
+    if (window.PaintColorPanel) window.PaintColorPanel.refresh();
   },
 
-  /**
-   * Akcje w górnym menu (Nowy, Otwórz, Zapisz, Cofnij, Ponów, Wyczyść, Rozmiar).
-   */
   bindTopBarActions() {
     // 1. Nowy dokument
     const btnNew = document.getElementById('btn-new-file');
     if (btnNew) {
-      btnNew.addEventListener('click', () => window.PaintFiles.newDocument());
+      btnNew.addEventListener('click', () => {
+        this.cancelImagePreview();
+        window.PaintFiles.newDocument();
+      });
     }
 
     // 2. Otwórz plik obrazu
     const btnOpenFile = document.getElementById('btn-open-file');
     if (btnOpenFile) {
-      btnOpenFile.addEventListener('click', () => window.PaintFiles.openImageFile());
+      btnOpenFile.addEventListener('click', () => {
+        this.cancelImagePreview();
+        window.PaintFiles.openImageFile();
+      });
     }
 
     // 3. Ujednolicony przycisk Zapisz
     const btnSaveFile = document.getElementById('btn-save-file');
     if (btnSaveFile) {
-      btnSaveFile.addEventListener('click', () => window.PaintFiles.openSaveModal());
+      btnSaveFile.addEventListener('click', () => {
+        this.cancelImagePreview();
+        window.PaintFiles.openSaveModal();
+      });
     }
 
     // 3b. Informacje o pliku
@@ -398,17 +418,13 @@ window.PaintUI = {
       btnFileInfo.addEventListener('click', () => this.openFileInfoModal());
     }
 
-    const statusPpmBadge = document.getElementById('status-ppm-badge');
-    if (statusPpmBadge) {
-      statusPpmBadge.addEventListener('click', () => this.openFileInfoModal());
-    }
-
     // 4. Cofnij / Ponów
     const btnUndo = document.getElementById('btn-undo');
     const btnRedo = document.getElementById('btn-redo');
 
     if (btnUndo) {
       btnUndo.addEventListener('click', () => {
+        this.cancelImagePreview();
         window.PaintCanvas.history.undo(window.PaintCanvas.mainCtx, (w, h) => {
           window.PaintCanvas.setDimensions(w, h);
         });
@@ -417,6 +433,7 @@ window.PaintUI = {
 
     if (btnRedo) {
       btnRedo.addEventListener('click', () => {
+        this.cancelImagePreview();
         window.PaintCanvas.history.redo(window.PaintCanvas.mainCtx, (w, h) => {
           window.PaintCanvas.setDimensions(w, h);
         });
@@ -428,12 +445,13 @@ window.PaintUI = {
     if (btnClear) {
       btnClear.addEventListener('click', () => {
         if (confirm('Czy na pewno chcesz wyczyścić całą kanwę?')) {
+          this.cancelImagePreview();
           window.PaintCanvas.clearToWhite(true);
         }
       });
     }
 
-    // 6. Zmiana rozmiaru kanwy z panelu bocznego
+    // Zmiana rozmiaru kanwy z panelu bocznego
     const inputCanvasW = document.getElementById('input-canvas-width');
     const inputCanvasH = document.getElementById('input-canvas-height');
     const btnApplySize = document.getElementById('btn-apply-canvas-size');
@@ -465,18 +483,11 @@ window.PaintUI = {
       const statusDim = document.getElementById('status-dimensions');
       if (statusDim) statusDim.textContent = `${width} × ${height} px`;
 
-      // Aktualizacja wymiarów w metadanych bieżącego pliku i odświeżenie plakietki
+      // Aktualizacja wymiarów w metadanych bieżącego pliku
       const curInfo = window.PaintState?.currentFileInfo;
       if (curInfo) {
         curInfo.width = width;
         curInfo.height = height;
-        const badge = document.getElementById('status-ppm-badge');
-        if (badge && badge.style.display !== 'none') {
-          const isPPM = curInfo.type === 'P3' || curInfo.type === 'P6';
-          badge.textContent = isPPM
-            ? `PPM ${curInfo.type} · ${width}×${height} · max: ${curInfo.maxVal}`
-            : `${curInfo.type} · ${width}×${height}`;
-        }
       }
     });
   },
@@ -564,11 +575,24 @@ window.PaintUI = {
   bindCanvasEvents() {
     const overlay = window.PaintCanvas.overlayCanvas;
     const statusCoords = document.getElementById('status-coords');
+    const formatSelect = document.getElementById('status-color-format');
+    if (formatSelect) {
+      this.colorFormat = formatSelect.value || 'rgb';
+      formatSelect.addEventListener('change', () => {
+        this.colorFormat = formatSelect.value;
+        this.refreshPixelReadout();
+      });
+    }
 
     // Wyłączenie menu kontekstowego przeglądarki na płótnie (obsługa PPM)
     overlay.addEventListener('contextmenu', (e) => e.preventDefault());
 
     overlay.addEventListener('pointerdown', (e) => {
+      if (window.PaintCompareView && window.PaintCompareView.active) {
+        e.preventDefault();
+        window.PaintCompareView.notifyDrawBlocked();
+        return;
+      }
       overlay.setPointerCapture(e.pointerId);
       const coords = window.PaintCanvas.getCanvasCoords(e);
       window.PaintTools.onPointerDown(e, coords);
@@ -581,15 +605,23 @@ window.PaintUI = {
       // Aktualizuj współrzędne w pasku stanu, jeśli wskaźnik znajduje się nad kanwą
       if (coords.x >= 0 && coords.x <= window.PaintState.canvasWidth &&
           coords.y >= 0 && coords.y <= window.PaintState.canvasHeight) {
+        this.hoveredCanvasCoords = coords;
         if (statusCoords) {
           statusCoords.textContent = `${Math.floor(coords.x)}, ${Math.floor(coords.y)} px`;
         }
+        this.refreshPixelReadout();
+      } else {
+        this.hoveredCanvasCoords = null;
+        this.updateStatusToolHint();
       }
 
-      window.PaintTools.onPointerMove(e, coords);
+      if (!window.PaintCompareView || !window.PaintCompareView.active) {
+        window.PaintTools.onPointerMove(e, coords);
+      }
     });
 
     window.addEventListener('pointerup', (e) => {
+      if (window.PaintCompareView && window.PaintCompareView.active) return;
       const coords = window.PaintCanvas.getCanvasCoords(e);
       window.PaintTools.onPointerUp(e, coords);
     });
@@ -674,6 +706,11 @@ window.PaintUI = {
           window.PaintFiles.closeSaveModal();
           return;
         }
+        if (window.PaintCompareView && window.PaintCompareView.active) {
+          e.preventDefault();
+          this.cancelImagePreview();
+          return;
+        }
         if (window.PaintTools.isDrawing) {
           window.PaintTools.cancelGesture();
           return;
@@ -688,6 +725,7 @@ window.PaintUI = {
       // Undo: Ctrl+Z
       if ((e.ctrlKey || e.metaKey) && key === 'z' && !e.shiftKey) {
         e.preventDefault();
+        this.cancelImagePreview();
         window.PaintCanvas.history.undo(window.PaintCanvas.mainCtx, (w, h) => {
           window.PaintCanvas.setDimensions(w, h);
         });
@@ -697,6 +735,7 @@ window.PaintUI = {
       // Redo: Ctrl+Y lub Ctrl+Shift+Z
       if ((e.ctrlKey || e.metaKey) && (key === 'y' || (key === 'z' && e.shiftKey))) {
         e.preventDefault();
+        this.cancelImagePreview();
         window.PaintCanvas.history.redo(window.PaintCanvas.mainCtx, (w, h) => {
           window.PaintCanvas.setDimensions(w, h);
         });
@@ -706,6 +745,7 @@ window.PaintUI = {
       // Zapisz: Ctrl+S -> otwiera ujednolicony modal zapisu
       if ((e.ctrlKey || e.metaKey) && key === 's') {
         e.preventDefault();
+        this.cancelImagePreview();
         window.PaintFiles.openSaveModal();
         return;
       }
@@ -713,6 +753,7 @@ window.PaintUI = {
       // Otwórz: Ctrl+O
       if ((e.ctrlKey || e.metaKey) && key === 'o') {
         e.preventDefault();
+        this.cancelImagePreview();
         window.PaintFiles.openImageFile();
         return;
       }
@@ -732,7 +773,8 @@ window.PaintUI = {
         r: 'rect',
         o: 'ellipse',
         b: 'bucket',
-        g: 'bucket'
+        g: 'bucket',
+        i: 'eyedropper'
       };
 
       if (toolShortcuts[key]) {
@@ -756,10 +798,47 @@ window.PaintUI = {
       line: 'Linia – przeciągnij myszą; przytrzymaj Shift dla kątów 0°, 45°, 90° (L)',
       rect: 'Prostokąt – przeciągnij myszą; przytrzymaj Shift dla kwadratu (R)',
       ellipse: 'Elipsa – przeciągnij myszą; przytrzymaj Shift dla idealnego koła (O)',
-      bucket: 'Wiadro z farbą – kliknij, aby wypełnić ciągły obszar kolorem (B)'
+      bucket: 'Wiadro z farbą – kliknij, aby wypełnić ciągły obszar kolorem (B)',
+      eyedropper: 'Pipeta – kliknij piksel: LPM ustawia aktywny kolor, PPM drugi; odczyt koloru jest na pasku stanu (I)'
     };
 
     hintEl.textContent = hints[tool] || '';
+    hintEl.title = hintEl.textContent;
+    if (this.hoveredCanvasCoords) this.refreshPixelReadout();
+  },
+
+  refreshPixelReadout() {
+    const hintEl = document.getElementById('status-tool-hint');
+    const coords = this.hoveredCanvasCoords;
+    if (!hintEl || !coords) return;
+
+    const x = Math.floor(coords.x);
+    const y = Math.floor(coords.y);
+    const inBounds = x >= 0 && y >= 0 &&
+      x < window.PaintState.canvasWidth && y < window.PaintState.canvasHeight;
+    if (!inBounds) return;
+
+    const previewActive = window.PaintCompareView && window.PaintCompareView.active;
+    const ctx = previewActive ? window.PaintCanvas.overlayCtx : window.PaintCanvas.mainCtx;
+    const pixel = ctx.getImageData(x, y, 1, 1).data;
+    const [r, g, b] = pixel;
+    const C = window.PaintColor;
+    const hex = C.rgbToHex(r, g, b).toUpperCase();
+    const fmt = (value) => new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 1 }).format(value);
+    let values;
+
+    if (this.colorFormat === 'hsv') {
+      const hsv = C.rgbToHsv(r, g, b);
+      values = `HSV ${fmt(hsv.h)}°, ${fmt(hsv.s * 100)}%, ${fmt(hsv.v * 100)}%`;
+    } else if (this.colorFormat === 'cmyk') {
+      const cmyk = C.rgbToCmyk(r, g, b);
+      values = `CMYK ${fmt(cmyk.c * 100)}%, ${fmt(cmyk.m * 100)}%, ${fmt(cmyk.y * 100)}%, ${fmt(cmyk.k * 100)}%`;
+    } else {
+      values = `RGB ${r}, ${g}, ${b}`;
+    }
+
+    hintEl.textContent = `Piksel (${x}, ${y}) · ${values} · ${hex}`;
+    hintEl.title = hintEl.textContent;
   },
 
   /**
@@ -864,16 +943,7 @@ window.PaintUI = {
 
     const isPPM = info.type === 'P3' || info.type === 'P6';
 
-    // 1. Aktualizacja plakietki w pasku stanu
-    const badge = document.getElementById('status-ppm-badge');
-    if (badge) {
-      badge.style.display = 'inline-flex';
-      badge.textContent = isPPM
-        ? `PPM ${info.type} · ${info.width}×${info.height} · max: ${info.maxVal}`
-        : `${info.type} · ${info.width}×${info.height}`;
-    }
-
-    // 2. Podpowiedź w pasku stanu
+    // Podpowiedź w pasku stanu
     const hintText = isPPM
       ? `Wczytano plik PPM (${info.type}): ${info.width} × ${info.height} px, maxVal: ${info.maxVal}`
       : `Wczytano plik ${info.type}: ${info.width} × ${info.height} px`;
@@ -883,19 +953,8 @@ window.PaintUI = {
       hintEl.textContent = hintText;
     }
 
-    // 3. Pływające powiadomienie Toast
+    // Pływające powiadomienie Toast
     this.showToast(hintText);
-  },
-
-  /**
-   * Czyści wskaźniki pliku w pasku stanu.
-   */
-  clearFileInfoDisplay() {
-    const badge = document.getElementById('status-ppm-badge');
-    if (badge) {
-      badge.style.display = 'none';
-      badge.textContent = 'PPM';
-    }
   },
 
   /**

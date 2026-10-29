@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
@@ -15,7 +15,6 @@
       </div>
 
       <div class="menu-group">
-        <!-- Nowy dokument -->
         <button id="btn-new-file" class="btn-icon" title="Nowy czysty dokument">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -25,16 +24,12 @@
           </svg>
           Nowy
         </button>
-
-        <!-- Otwórz obraz -->
         <button id="btn-open-file" class="btn-icon" title="Wczytaj obraz z dysku (Ctrl+O)">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
           </svg>
           Otwórz
         </button>
-
-        <!-- Zapisz obraz -->
         <button id="btn-save-file" class="btn-icon" title="Zapisz obraz do pliku PPM, PNG lub JPG (Ctrl+S)">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
@@ -43,8 +38,6 @@
           </svg>
           Zapisz
         </button>
-
-        <!-- Informacje o pliku -->
         <button id="btn-file-info" class="btn-icon" title="Pokaż informacje o nagłówku wczytanego pliku PPM (typ, wymiary, maxVal)">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"/>
@@ -56,8 +49,6 @@
       </div>
 
       <div class="divider"></div>
-
-      <!-- Historia: Cofnij / Ponów -->
       <div class="menu-group">
         <button id="btn-undo" class="btn-icon disabled" disabled title="Cofnij ostatnią operację (Ctrl+Z)">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -66,7 +57,6 @@
           </svg>
           Cofnij
         </button>
-
         <button id="btn-redo" class="btn-icon disabled" disabled title="Ponów cofniętą operację (Ctrl+Y)">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="m15 14 5-5-5-5"/>
@@ -75,10 +65,7 @@
           Ponów
         </button>
       </div>
-
       <div class="divider"></div>
-
-      <!-- Przycisk Wyczyść -->
       <button id="btn-clear-canvas" class="btn-icon btn-clear" title="Wyczyść całe płótno do bieli">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 6h18"/>
@@ -87,7 +74,6 @@
         </svg>
         Wyczyść
       </button>
-
     </header>
 
     <!-- GŁÓWNY UKŁAD: TOOLBAR + OBSZAR ROBOCZY + SIDEBAR -->
@@ -143,6 +129,17 @@
             <path d="m5 2 5 5"/>
             <path d="M2 13h15"/>
             <path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z"/>
+          </svg>
+        </button>
+
+        <div class="toolbar-separator"></div>
+
+        <!-- Pipeta -->
+        <button class="tool-btn" data-tool="eyedropper" title="Pipeta – pobierz kolor piksela, wartości we wszystkich modelach (I)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m2 22 1-1h3l9-9"/>
+            <path d="M3 21v-3l9-9"/>
+            <path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z"/>
           </svg>
         </button>
       </nav>
@@ -220,15 +217,21 @@
           <div id="opt-bucket" class="opt-section" style="display: none;">
             <div class="control-group">
               <span class="control-label">Kolor wypełnienia:</span>
-              <div id="preview-bucket-color" class="bucket-color-chip" title="Kliknij, aby wybrać kolor wypełnienia">
-                <input type="color" id="input-bucket-color" class="hidden-color-input" value="#3b82f6">
-              </div>
+              <button type="button" id="preview-bucket-color" class="bucket-color-chip" title="Edytuj kolor wypełnienia"></button>
               <code id="hex-bucket-color" class="control-val">#3B82F6</code>
             </div>
             <div class="control-group">
               <span class="control-label">Tolerancja:</span>
               <input type="range" id="bucket-tol-slider" min="0" max="255" value="32">
               <span id="bucket-tol-val" class="control-val">32</span>
+            </div>
+          </div>
+
+          <!-- Opcje: Pipeta -->
+          <div id="opt-eyedropper" class="opt-section" style="display: none;">
+            <div class="control-group">
+              <div id="eyedropper-chip" class="bucket-color-chip" title="Ostatnio pobrany kolor"></div>
+              <code id="eyedropper-readout" class="eyedropper-readout">Kliknij piksel obrazu. LPM: aktywny kolor, PPM: drugi kolor. Przeciągnij, by podglądać.</code>
             </div>
           </div>
         </div>
@@ -254,13 +257,11 @@
           <div class="color-picker-box">
             <div class="color-overlap-container">
               <!-- Próbnik wypełnienia (pod spodem) -->
-              <div id="preview-fill-color" class="swatch-fill" title="Kolor wypełnienia (kliknij, aby aktywować / zmienić)">
-                <input type="color" id="input-fill-color" class="hidden-color-input" value="#3b82f6">
-              </div>
+              <button type="button" id="preview-fill-color" class="swatch-fill" title="Edytuj kolor wypełnienia">
+              </button>
               <!-- Próbnik obrysu (na wierzchu) -->
-              <div id="preview-stroke-color" class="swatch-stroke active" title="Kolor obrysu (kliknij, aby aktywować / zmienić)">
-                <input type="color" id="input-stroke-color" class="hidden-color-input" value="#8b5cf6">
-              </div>
+              <button type="button" id="preview-stroke-color" class="swatch-stroke active" title="Edytuj kolor obrysu">
+              </button>
             </div>
 
             <div class="color-info-text">
@@ -293,40 +294,59 @@
 
           <!-- Siatka 25 gotowych kolorów palety -->
           <div class="color-grid">
-            <button class="color-swatch" data-color="#000000" style="background:#000000;"></button>
-            <button class="color-swatch" data-color="#4b5563" style="background:#4b5563;"></button>
-            <button class="color-swatch" data-color="#9ca3af" style="background:#9ca3af;"></button>
-            <button class="color-swatch" data-color="#e5e7eb" style="background:#e5e7eb;"></button>
-            <button class="color-swatch" data-color="#ffffff" style="background:#ffffff;"></button>
-
-            <button class="color-swatch" data-color="#dc2626" style="background:#dc2626;"></button>
-            <button class="color-swatch" data-color="#ea580c" style="background:#ea580c;"></button>
-            <button class="color-swatch" data-color="#f59e0b" style="background:#f59e0b;"></button>
-            <button class="color-swatch" data-color="#eab308" style="background:#eab308;"></button>
-            <button class="color-swatch" data-color="#84cc16" style="background:#84cc16;"></button>
-
-            <button class="color-swatch" data-color="#16a34a" style="background:#16a34a;"></button>
-            <button class="color-swatch" data-color="#0d9488" style="background:#0d9488;"></button>
-            <button class="color-swatch" data-color="#06b6d4" style="background:#06b6d4;"></button>
-            <button class="color-swatch" data-color="#0284c7" style="background:#0284c7;"></button>
-            <button class="color-swatch" data-color="#2563eb" style="background:#2563eb;"></button>
-
-            <button class="color-swatch" data-color="#4f46e5" style="background:#4f46e5;"></button>
-            <button class="color-swatch" data-color="#7c3aed" style="background:#7c3aed;"></button>
-            <button class="color-swatch" data-color="#9333ea" style="background:#9333ea;"></button>
-            <button class="color-swatch" data-color="#c026d3" style="background:#c026d3;"></button>
-            <button class="color-swatch" data-color="#db2777" style="background:#db2777;"></button>
-
-            <button class="color-swatch" data-color="#78350f" style="background:#78350f;"></button>
-            <button class="color-swatch" data-color="#b45309" style="background:#b45309;"></button>
-            <button class="color-swatch" data-color="#fda4af" style="background:#fda4af;"></button>
-            <button class="color-swatch" data-color="#fed7aa" style="background:#fed7aa;"></button>
-            <button class="color-swatch" data-color="#d9f99d" style="background:#d9f99d;"></button>
+            <button class="color-swatch" data-color="#000000" title="Czarny" aria-label="Czarny" style="background:#000000;"></button>
+            <button class="color-swatch" data-color="#4b5563" title="Ciemnoszary" aria-label="Ciemnoszary" style="background:#4b5563;"></button>
+            <button class="color-swatch" data-color="#9ca3af" title="Szary" aria-label="Szary" style="background:#9ca3af;"></button>
+            <button class="color-swatch" data-color="#e5e7eb" title="Jasnoszary" aria-label="Jasnoszary" style="background:#e5e7eb;"></button>
+            <button class="color-swatch" data-color="#ffffff" title="Biały" aria-label="Biały" style="background:#ffffff;"></button>
+            <button class="color-swatch" data-color="#dc2626" title="Czerwony" aria-label="Czerwony" style="background:#dc2626;"></button>
+            <button class="color-swatch" data-color="#ea580c" title="Pomarańczowy ciemny" aria-label="Pomarańczowy ciemny" style="background:#ea580c;"></button>
+            <button class="color-swatch" data-color="#f59e0b" title="Pomarańczowy" aria-label="Pomarańczowy" style="background:#f59e0b;"></button>
+            <button class="color-swatch" data-color="#eab308" title="Żółty" aria-label="Żółty" style="background:#eab308;"></button>
+            <button class="color-swatch" data-color="#84cc16" title="Limonkowy" aria-label="Limonkowy" style="background:#84cc16;"></button>
+            <button class="color-swatch" data-color="#16a34a" title="Zielony" aria-label="Zielony" style="background:#16a34a;"></button>
+            <button class="color-swatch" data-color="#0d9488" title="Morski" aria-label="Morski" style="background:#0d9488;"></button>
+            <button class="color-swatch" data-color="#06b6d4" title="Cyjan" aria-label="Cyjan" style="background:#06b6d4;"></button>
+            <button class="color-swatch" data-color="#0287c7" title="Błękitny" aria-label="Błękitny" style="background:#0287c7;"></button>
+            <button class="color-swatch" data-color="#2563eb" title="Niebieski" aria-label="Niebieski" style="background:#2563eb;"></button>
+            <button class="color-swatch" data-color="#4f46e5" title="Indygo" aria-label="Indygo" style="background:#4f46e5;"></button>
+            <button class="color-swatch" data-color="#7c3aed" title="Fioletowy" aria-label="Fioletowy" style="background:#7c3aed;"></button>
+            <button class="color-swatch" data-color="#9333ea" title="Fioletowy jasny" aria-label="Fioletowy jasny" style="background:#9333ea;"></button>
+            <button class="color-swatch" data-color="#c026d3" title="Magenta" aria-label="Magenta" style="background:#c026d3;"></button>
+            <button class="color-swatch" data-color="#db2777" title="Różowy" aria-label="Różowy" style="background:#db2777;"></button>
+            <button class="color-swatch" data-color="#78350f" title="Brązowy" aria-label="Brązowy" style="background:#78350f;"></button>
+            <button class="color-swatch" data-color="#b45309" title="Bursztynowy" aria-label="Bursztynowy" style="background:#b45309;"></button>
+            <button class="color-swatch" data-color="#fda4af" title="Jasnoróżowy" aria-label="Jasnoróżowy" style="background:#fda4af;"></button>
+            <button class="color-swatch" data-color="#fed7aa" title="Brzoskwiniowy" aria-label="Brzoskwiniowy" style="background:#fed7aa;"></button>
+            <button class="color-swatch" data-color="#d9f99d" title="Jasnozielony" aria-label="Jasnozielony" style="background:#d9f99d;"></button>
           </div>
-          <div class="palette-hint">Klik: obrys · Shift lub PPM: wypełnienie</div>
         </div>
 
-        <!-- Sekcja Rozmiaru Kanwy -->
+        <!-- Podgląd operacji na obrazie renderowany bezpośrednio na warstwie overlay -->
+        <div class="sidebar-section">
+          <div class="sidebar-header">Podgląd obrazu</div>
+          <div class="img-ops-buttons">
+            <div class="img-preview-modes" role="group" aria-label="Tryb podglądu obrazu">
+              <button type="button" class="img-preview-mode active" data-image-mode="color">Kolor</button>
+              <button type="button" class="img-preview-mode" data-image-mode="gray">Szarość</button>
+            </div>
+            <div id="image-channel-controls" class="img-channel-buttons" role="group" aria-label="Podgląd kanału koloru">
+              <button type="button" class="btn-mini" data-color-channel="r">R</button>
+              <button type="button" class="btn-mini" data-color-channel="g">G</button>
+              <button type="button" class="btn-mini" data-color-channel="b">B</button>
+            </div>
+            <div id="image-gray-controls" class="img-gray-methods" role="group" aria-label="Metoda konwersji do skali szarości" hidden>
+              <button type="button" class="img-gray-method active" data-gray-method="luma">Wagi</button>
+              <button type="button" class="img-gray-method" data-gray-method="average">Średnia</button>
+            </div>
+            <div class="img-preview-actions">
+              <button type="button" id="btn-image-preview-apply" class="btn-full btn-primary" disabled>Zastosuj na obrazie</button>
+              <button type="button" id="btn-image-preview-cancel" class="btn-full" disabled>Anuluj podgląd</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sekcja zmiany rozmiaru kanwy -->
         <div class="sidebar-section">
           <div class="sidebar-header">Rozmiar kanwy</div>
           <div class="size-fields-grid">
@@ -341,13 +361,19 @@
           </div>
           <button id="btn-apply-canvas-size" class="btn-full">Zmień rozmiar</button>
         </div>
+
       </aside>
     </div>
 
     <!-- DOLNY PASEK STANU (STATUSBAR) -->
     <footer class="statusbar">
       <div class="status-left">
-        <button id="status-ppm-badge" class="status-ppm-badge" style="display: none;" title="Kliknij, aby otworzyć szczegóły nagłówka PPM">PPM</button>
+        <label class="status-color-format-label" for="status-color-format">Kolor piksela</label>
+        <select id="status-color-format" class="status-color-format" aria-label="Format odczytu koloru piksela">
+          <option value="rgb">RGB</option>
+          <option value="hsv">HSV</option>
+          <option value="cmyk">CMYK</option>
+        </select>
         <span id="status-tool-hint">Ołówek – rysowanie odręczne (P)</span>
       </div>
 
@@ -572,6 +598,39 @@
   </div>
 
   <!-- PŁYWAJĄCE POWIADOMIENIE (TOAST) -->
+  <!-- MODAL WYBORU KOLORU: RGB, CMYK, HSV -->
+  <div id="color-picker-modal" class="modal-backdrop">
+    <div class="modal-card modal-card-color" role="dialog" aria-modal="true" aria-labelledby="color-picker-title">
+      <div class="modal-header">
+        <div class="modal-title" id="color-picker-title">Edytuj kolor obrysu</div>
+        <button id="btn-color-picker-close" class="modal-close-btn" title="Zamknij (Esc)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="cm-target" role="group" aria-label="Edytowany kolor">
+          <button type="button" class="cm-target-btn active" data-target="stroke">Obrys</button>
+          <button type="button" class="cm-target-btn" data-target="fill">Wypełnienie</button>
+        </div>
+        <div class="cm-sample-row">
+          <div id="cm-sample" class="cm-sample" aria-label="Próbka koloru"></div>
+          <div class="cm-sample-meta">
+            <label class="cm-hex-label" for="cm-hex">HEX</label>
+            <input type="text" id="cm-hex" class="input-number cm-hex" value="#8b5cf6" maxlength="7" spellcheck="false" autocomplete="off">
+            <span id="cm-source" class="cm-source">Ustawiony ręcznie</span>
+          </div>
+        </div>
+        <div id="cm-groups" class="cm-groups"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-color-picker-done" class="btn-icon btn-primary">Gotowe</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast-notification" class="toast-notification"></div>
 
   <!-- MODULARNE SKRYPTY JAVASCRIPT -->
@@ -581,8 +640,12 @@
   <script src="js/history.js"></script>
   <script src="js/canvas.js"></script>
   <script src="js/ppm.js"></script>
+  <script src="js/colorModels.js"></script>
+  <script src="js/imageOps.js"></script>
   <script src="js/tools.js"></script>
   <script src="js/fileActions.js"></script>
+  <script src="js/colorPanel.js"></script>
+  <script src="js/compareView.js"></script>
   <script src="js/ui.js"></script>
   <script src="app.js"></script>
 </body>

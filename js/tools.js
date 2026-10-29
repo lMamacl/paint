@@ -7,8 +7,9 @@
  * - Prostokąt (podgląd na żywo, obrys/wypełnienie/oba, Shift = kwadrat)
  * - Elipsa/Okrąg (podgląd na żywo, obrys/wypełnienie/oba, Shift = okrąg)
  * - Wiadro (wypełnienie obszaru przez PaintFloodFill)
+ * - Pipeta (odczyt koloru piksela; wartości we wszystkich modelach pokazuje panel kolorów)
  *
- * ZAKRES: powyższe sześć narzędzi. Pipeta, tekst i lasso NIE są zaimplementowane.
+ * ZAKRES: powyższe siedem narzędzi. Tekst i lasso NIE są zaimplementowane.
  *
  * Wszystkie gesty narzędzi są opakowane w transakcje historii przyrostowej (begin / commit / abort),
  * a ich obszary brudne (Dirty Rect) są precyzyjnie śledzone za pomocą modułu PaintRect.
@@ -126,6 +127,10 @@ window.PaintTools = {
       }
 
       this.isDrawing = false;
+    } else if (tool === 'eyedropper') {
+      // Pipeta: nie zmienia pikseli (brak transakcji historii). Przeciąganie z wciśniętym
+      // przyciskiem odczytuje kolor na bieżąco (isDrawing = true aż do puszczenia przycisku).
+      this.pickColor(coords, e.button);
     }
   },
 
@@ -155,6 +160,8 @@ window.PaintTools = {
     } else if (tool === 'ellipse') {
       window.PaintCanvas.clearOverlay();
       this.drawEllipse(overlayCtx, this.startX, this.startY, coords.x, coords.y, e.shiftKey, this.currentButton === 2);
+    } else if (tool === 'eyedropper') {
+      this.pickColor(coords, this.currentButton);
     }
   },
 
@@ -215,6 +222,49 @@ window.PaintTools = {
         history.commit(mainCtx);
       }
     }
+  },
+
+  /**
+   * Pipeta: odczytuje kolor piksela głównej kanwy i ustawia go jako kolor aplikacji.
+   *  - LPM: aktywny kolor (obrys albo wypełnienie, zależnie od aktywnego próbnika),
+   *  - PPM: drugi z kolorów (i staje się on aktywny, żeby panel pokazał jego wartości).
+   * Półprzezroczyste piksele są składane z białym tłem (tak samo jak przy zapisie do PPM).
+   * Po ustawieniu koloru wysyła zdarzenie paint:colorpicked (panel kolorów pokazuje wtedy
+   * współrzędne piksela i opis koloru we wszystkich modelach).
+   * @returns {boolean} true, jeśli współrzędne leżały na kanwie
+   */
+  pickColor(coords, button) {
+    const { mainCanvas, mainCtx } = window.PaintCanvas;
+    const x = Math.floor(coords.x);
+    const y = Math.floor(coords.y);
+    if (x < 0 || y < 0 || x >= mainCanvas.width || y >= mainCanvas.height) return false;
+
+    const d = mainCtx.getImageData(x, y, 1, 1).data;
+    let r = d[0];
+    let g = d[1];
+    let b = d[2];
+    const a = d[3];
+    if (a < 255) {
+      const alpha = a / 255;
+      r = Math.round(r * alpha + 255 * (1 - alpha));
+      g = Math.round(g * alpha + 255 * (1 - alpha));
+      b = Math.round(b * alpha + 255 * (1 - alpha));
+    }
+    const hex = window.PaintColor.rgbToHex(r, g, b);
+
+    const active = window.PaintState.activeColorTarget === 'fill' ? 'fill' : 'stroke';
+    const other = active === 'stroke' ? 'fill' : 'stroke';
+    const target = button === 2 ? other : active;
+
+    window.PaintState.set(target === 'stroke' ? 'strokeColor' : 'fillColor', hex);
+    if (window.PaintUI) {
+      window.PaintUI.setActiveColorTarget(target);
+      window.PaintUI.updateColorDisplays();
+    }
+    window.dispatchEvent(new CustomEvent('paint:colorpicked', {
+      detail: { x, y, r, g, b, hex, target }
+    }));
+    return true;
   },
 
   /**

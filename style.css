@@ -473,6 +473,9 @@ input[type="range"]::-webkit-slider-thumb:hover {
   border: 2px solid rgba(255, 255, 255, 0.7);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   cursor: pointer;
+  padding: 0;
+  appearance: none;
+  background-color: transparent;
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
@@ -493,15 +496,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
   border-color: #ffffff;
   box-shadow: 0 0 0 2px var(--accent-primary), 0 6px 18px rgba(0, 0, 0, 0.7);
   transform: scale(1.04);
-}
-
-.hidden-color-input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-  width: 100%;
-  height: 100%;
 }
 
 .color-info-text {
@@ -556,6 +550,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
   position: relative;
   width: 22px;
   height: 22px;
+  padding: 0;
+  appearance: none;
   border-radius: 6px;
   border: 1.5px solid rgba(255, 255, 255, 0.8);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
@@ -566,6 +562,11 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 .bucket-color-chip:hover {
   transform: scale(1.1);
+}
+
+.bucket-color-chip:focus-visible {
+  outline: 2px solid var(--accent-hover);
+  outline-offset: 2px;
 }
 
 .color-actions {
@@ -594,13 +595,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .color-swatch:hover {
   transform: scale(1.15);
   z-index: 5;
-}
-
-.palette-hint {
-  margin-top: 10px;
-  font-size: 10.5px;
-  line-height: 1.4;
-  color: var(--text-dim);
 }
 
 /* Sekcja zmiany rozmiaru kanwy */
@@ -951,33 +945,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
   min-width: 80px;
 }
 
-/* Plakietka PPM w pasku stanu */
-.status-ppm-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background-color: var(--accent-active-bg);
-  color: var(--accent-hover);
-  border: 1px solid var(--accent-primary);
-  border-radius: 4px;
-  padding: 2px 7px;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  animation: badge-appear 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.status-ppm-badge:hover {
-  background-color: var(--accent-primary);
-  color: #ffffff;
-}
-
-@keyframes badge-appear {
-  from { opacity: 0; transform: scale(0.9); }
-  to { opacity: 1; transform: scale(1); }
-}
-
 /* Siatka właściwości w oknie informacji o pliku */
 .file-info-grid {
   display: grid;
@@ -1097,6 +1064,10 @@ input[type="range"]::-webkit-slider-thumb:hover {
   pointer-events: none;
 }
 
+.toast-notification:empty {
+  display: none;
+}
+
 .toast-notification.hide {
   opacity: 0;
   transform: translateY(10px);
@@ -1115,3 +1086,452 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 
+
+/* ==========================================================================
+   ĆWICZENIE 3: MODELE BARW, PIPETA, OPERACJE NA OBRAZIE
+   ========================================================================== */
+
+/* Przełącznik dwuwartościowy (Obrys / Wypełnienie, tryb kanałów) */
+.cm-target,
+.cmp-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  padding: 2px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.cm-target-btn,
+.cmp-mode-btn {
+  height: 26px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.cm-target-btn:hover,
+.cmp-mode-btn:hover {
+  color: var(--text-main);
+}
+
+.cm-target-btn.active,
+.cmp-mode-btn.active {
+  background: var(--accent-active-bg);
+  color: var(--accent-hover);
+  box-shadow: inset 0 0 0 1px var(--accent-primary);
+}
+
+.cm-target-btn:focus-visible,
+.cmp-mode-btn:focus-visible,
+.cmp-tab:focus-visible,
+.cmp-color-mode-btn:focus-visible {
+  outline: 2px solid var(--accent-hover);
+  outline-offset: 1px;
+}
+
+/* Próbka koloru + HEX */
+.cm-sample-row {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  margin: 12px 0 14px;
+}
+
+.cm-sample {
+  flex: 0 0 64px;
+  height: 64px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  background-color: #8b5cf6;
+}
+
+.cm-sample-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 3px;
+}
+
+.cm-hex-label {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.cm-hex {
+  width: 100%;
+  text-transform: lowercase;
+}
+
+.cm-source {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Grupy RGB / CMYK / HSV */
+.cm-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cm-group-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.cm-row {
+  display: grid;
+  grid-template-columns: 12px 1fr 56px 12px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.cm-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-main);
+  font-family: ui-monospace, monospace;
+}
+
+.cm-unit {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+input[type="range"].cm-range {
+  width: 100%;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--cm-track, #27272a);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+input[type="range"].cm-range::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  background: #ffffff;
+  border: 2px solid #18181b;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7), 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+input[type="range"].cm-range::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  border: 2px solid #18181b;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7), 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+input[type="range"].cm-range:focus-visible {
+  outline: 2px solid var(--accent-hover);
+  outline-offset: 2px;
+}
+
+.input-number.cm-number {
+  width: 56px;
+  padding: 4px 6px;
+  text-align: right;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.input-number.cm-number::-webkit-inner-spin-button,
+.input-number.cm-number::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Sekcja „Obraz” w pasku bocznym */
+.img-ops-buttons {
+  display: grid;
+  gap: 8px;
+}
+
+.img-preview-modes,
+.img-channel-buttons,
+.img-gray-methods,
+.img-preview-actions {
+  display: grid;
+  gap: 6px;
+}
+
+.img-preview-modes,
+.img-gray-methods {
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  padding: 2px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.img-preview-mode,
+.img-gray-method {
+  min-height: 26px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.img-preview-mode.active,
+.img-gray-method.active {
+  background: var(--accent-active-bg);
+  color: var(--accent-hover);
+  box-shadow: inset 0 0 0 1px var(--accent-primary);
+}
+
+.img-preview-mode:hover,
+.img-gray-method:hover {
+  color: var(--text-main);
+}
+
+.img-preview-mode:focus-visible,
+.img-gray-method:focus-visible,
+.img-channel-buttons .btn-mini:focus-visible {
+  outline: 2px solid var(--accent-hover);
+  outline-offset: 1px;
+}
+
+.img-channel-buttons {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.img-channel-buttons[hidden],
+.img-gray-methods[hidden] {
+  display: none;
+}
+
+.img-channel-buttons .btn-mini {
+  width: auto;
+  height: 28px;
+}
+
+.img-channel-buttons .btn-mini.active {
+  border-color: var(--accent-primary);
+  background: var(--accent-active-bg);
+  color: var(--accent-hover);
+}
+
+.img-preview-actions {
+  grid-template-columns: 1fr 1fr;
+  margin-top: 4px;
+}
+
+.status-color-format-label {
+  color: var(--text-dim);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.status-color-format {
+  height: 22px;
+  padding: 0 4px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-subtle);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 10px;
+}
+
+#status-tool-hint {
+  max-width: 48vw;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Pipeta: pasek opcji */
+.eyedropper-readout {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 72vw;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+#eyedropper-chip {
+  flex: 0 0 22px;
+  cursor: default;
+}
+
+#eyedropper-chip:hover {
+  transform: none;
+}
+
+/* Okno „Operacje na obrazie” */
+.modal-card.modal-card-wide {
+  max-width: 980px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.cmp-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.cmp-tab {
+  height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cmp-tab:hover {
+  color: var(--text-main);
+}
+
+.cmp-tab.active {
+  color: var(--accent-hover);
+  border-bottom-color: var(--accent-primary);
+}
+
+.cmp-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cmp-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cmp-panel[hidden] {
+  display: none;
+}
+
+.cmp-stats {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.cmp-mode {
+  width: 320px;
+  max-width: 100%;
+}
+
+.cmp-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.cmp-card {
+  margin: 0;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.cmp-canvas {
+  display: block;
+  width: 100%;
+  height: 190px;
+  object-fit: contain;
+  background-color: #0e0e11;
+  cursor: crosshair;
+}
+
+.cmp-card figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+.cmp-card-title {
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.cmp-card-sub {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.cmp-apply {
+  margin-left: auto;
+  height: 26px;
+  padding: 0 12px;
+}
+
+.cmp-readout {
+  min-height: 3.2em;
+  padding: 8px 12px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.cmp-footnote {
+  margin-right: auto;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.modal-card-color {
+  width: min(560px, calc(100vw - 32px));
+}
+
+.modal-card-color .modal-body {
+  max-height: min(70vh, 620px);
+  overflow-y: auto;
+}
+
+@media (max-width: 760px) {
+  .img-preview-actions {
+    grid-template-columns: 1fr;
+  }
+}

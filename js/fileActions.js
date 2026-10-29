@@ -28,9 +28,6 @@ window.PaintFiles = {
     if (window.PaintState) {
       window.PaintState.set('currentFileInfo', null);
     }
-    if (window.PaintUI && window.PaintUI.clearFileInfoDisplay) {
-      window.PaintUI.clearFileInfoDisplay();
-    }
   },
 
   /**
