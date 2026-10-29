@@ -227,7 +227,7 @@ window.PaintColorPanel = {
     else rgb = C.cmykToRgb(values.c, values.m, values.y, values.k);
 
     const prev = this.current();
-    const next = this.derive(rgb, prev, model, true);
+    const next = this.derive(rgb, prev, model, false);
     next[model] = values; // edytowany model zostaje dokładnie taki, jak go wpisano
     next.source = this.DEFAULT_SOURCE;
     this.models[this.target] = next;
@@ -275,14 +275,6 @@ window.PaintColorPanel = {
     }
   },
 
-  /** Ustawia kolor „z zewnątrz” (wzorce): panel pokaże wtedy wartości standardowe. */
-  setExternalColor(hex) {
-    window.PaintState.set(this.stateKey(), hex);
-    if (window.PaintUI && window.PaintUI.updateColorDisplays) {
-      window.PaintUI.updateColorDisplays();
-    }
-  },
-
   // ───────────────────────── synchronizacja ─────────────────────────
 
   /** Wczytuje kolor aktywnego celu ze stanu aplikacji i odświeża panel. */
@@ -310,11 +302,7 @@ window.PaintColorPanel = {
     const target = detail.target === 'fill' ? 'fill' : 'stroke';
     this.models[target].source = `Pipeta: piksel (${detail.x}, ${detail.y})`;
 
-    const m = this.models[target];
     if (this.els.pickChip) this.els.pickChip.style.backgroundColor = detail.hex;
-    if (this.els.pickReadout) {
-      this.els.pickReadout.textContent = `(${detail.x}, ${detail.y})  ${this.describe(m)}`;
-    }
     this.render();
   },
 
@@ -351,10 +339,32 @@ window.PaintColorPanel = {
       range.style.setProperty('--cm-track', this.trackGradient(group, ch.key, m));
     });
 
-    // próbka, HEX, źródło
+    // próbka, HEX, źródło / wzorzec
     this.els.sample.style.backgroundColor = hex;
     if (document.activeElement !== this.els.hex) this.els.hex.value = hex;
-    this.els.source.textContent = m.source || this.DEFAULT_SOURCE;
+
+    const ref = C.REFERENCE_COLORS.find(
+      (rc) => rc.rgb[0] === m.rgb.r && rc.rgb[1] === m.rgb.g && rc.rgb[2] === m.rgb.b
+    );
+    if (ref) {
+      const check = C.checkReference(ref);
+      this.els.source.textContent = `${ref.name} (wzorzec: ${check.ok ? 'zgodny' : 'niezgodny'})`;
+    } else {
+      this.els.source.textContent = m.source || this.DEFAULT_SOURCE;
+    }
+
+    // Odświeżenie wskaźnika modeli w panelu bocznym (color-info-text)
+    if (this.els.pickReadout) {
+      const f = (v, model) => this.fmt(v, model);
+      const lines = [
+        `RGB ${m.rgb.r}, ${m.rgb.g}, ${m.rgb.b}`,
+        `HSV ${f(m.hsv.h, 'hsv')}°, ${f(m.hsv.s * 100, 'hsv')}%, ${f(m.hsv.v * 100, 'hsv')}%`,
+        `CMYK ${f(m.cmyk.c * 100, 'cmyk')}, ${f(m.cmyk.m * 100, 'cmyk')}, ${f(m.cmyk.y * 100, 'cmyk')}, ${f(m.cmyk.k * 100, 'cmyk')}`
+      ];
+      const prefix = m.source && m.source.startsWith('Pipeta') ? `${m.source}\n` : '';
+      this.els.pickReadout.textContent = prefix + lines.join('\n');
+      this.els.pickReadout.title = this.describe(m);
+    }
 
     // przełącznik obrys / wypełnienie
     this.els.targetBtns.forEach((btn) => {

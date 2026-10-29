@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
@@ -226,14 +226,6 @@
               <span id="bucket-tol-val" class="control-val">32</span>
             </div>
           </div>
-
-          <!-- Opcje: Pipeta -->
-          <div id="opt-eyedropper" class="opt-section" style="display: none;">
-            <div class="control-group">
-              <div id="eyedropper-chip" class="bucket-color-chip" title="Ostatnio pobrany kolor"></div>
-              <code id="eyedropper-readout" class="eyedropper-readout">Kliknij piksel obrazu. LPM: aktywny kolor, PPM: drugi kolor. Przeciągnij, by podglądać.</code>
-            </div>
-          </div>
         </div>
 
         <!-- OBSZAR ROBOCZY KANWY (WORKSPACE) -->
@@ -273,6 +265,7 @@
                 <span>Wypełnienie:</span>
                 <code id="hex-fill-color">#3B82F6</code>
               </div>
+              <div id="eyedropper-readout" class="color-models-readout" title="Wartości aktywnego koloru: RGB, HSV, CMYK"></div>
               <div class="color-actions">
                 <button id="btn-swap-colors" class="btn-mini" title="Zamień kolory obrysu i wypełnienia (X)">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -296,23 +289,23 @@
           <div class="color-grid">
             <button class="color-swatch" data-color="#000000" title="Czarny" aria-label="Czarny" style="background:#000000;"></button>
             <button class="color-swatch" data-color="#4b5563" title="Ciemnoszary" aria-label="Ciemnoszary" style="background:#4b5563;"></button>
-            <button class="color-swatch" data-color="#9ca3af" title="Szary" aria-label="Szary" style="background:#9ca3af;"></button>
+            <button class="color-swatch" data-color="#808080" title="Szary 50%" aria-label="Szary 50%" style="background:#808080;"></button>
             <button class="color-swatch" data-color="#e5e7eb" title="Jasnoszary" aria-label="Jasnoszary" style="background:#e5e7eb;"></button>
             <button class="color-swatch" data-color="#ffffff" title="Biały" aria-label="Biały" style="background:#ffffff;"></button>
-            <button class="color-swatch" data-color="#dc2626" title="Czerwony" aria-label="Czerwony" style="background:#dc2626;"></button>
+            <button class="color-swatch" data-color="#ff0000" title="Czerwony" aria-label="Czerwony" style="background:#ff0000;"></button>
             <button class="color-swatch" data-color="#ea580c" title="Pomarańczowy ciemny" aria-label="Pomarańczowy ciemny" style="background:#ea580c;"></button>
             <button class="color-swatch" data-color="#f59e0b" title="Pomarańczowy" aria-label="Pomarańczowy" style="background:#f59e0b;"></button>
-            <button class="color-swatch" data-color="#eab308" title="Żółty" aria-label="Żółty" style="background:#eab308;"></button>
+            <button class="color-swatch" data-color="#ffff00" title="Żółty" aria-label="Żółty" style="background:#ffff00;"></button>
             <button class="color-swatch" data-color="#84cc16" title="Limonkowy" aria-label="Limonkowy" style="background:#84cc16;"></button>
-            <button class="color-swatch" data-color="#16a34a" title="Zielony" aria-label="Zielony" style="background:#16a34a;"></button>
+            <button class="color-swatch" data-color="#00ff00" title="Zielony" aria-label="Zielony" style="background:#00ff00;"></button>
             <button class="color-swatch" data-color="#0d9488" title="Morski" aria-label="Morski" style="background:#0d9488;"></button>
-            <button class="color-swatch" data-color="#06b6d4" title="Cyjan" aria-label="Cyjan" style="background:#06b6d4;"></button>
+            <button class="color-swatch" data-color="#00ffff" title="Cyjan" aria-label="Cyjan" style="background:#00ffff;"></button>
             <button class="color-swatch" data-color="#0287c7" title="Błękitny" aria-label="Błękitny" style="background:#0287c7;"></button>
-            <button class="color-swatch" data-color="#2563eb" title="Niebieski" aria-label="Niebieski" style="background:#2563eb;"></button>
+            <button class="color-swatch" data-color="#0000ff" title="Niebieski" aria-label="Niebieski" style="background:#0000ff;"></button>
             <button class="color-swatch" data-color="#4f46e5" title="Indygo" aria-label="Indygo" style="background:#4f46e5;"></button>
             <button class="color-swatch" data-color="#7c3aed" title="Fioletowy" aria-label="Fioletowy" style="background:#7c3aed;"></button>
             <button class="color-swatch" data-color="#9333ea" title="Fioletowy jasny" aria-label="Fioletowy jasny" style="background:#9333ea;"></button>
-            <button class="color-swatch" data-color="#c026d3" title="Magenta" aria-label="Magenta" style="background:#c026d3;"></button>
+            <button class="color-swatch" data-color="#ff00ff" title="Magenta" aria-label="Magenta" style="background:#ff00ff;"></button>
             <button class="color-swatch" data-color="#db2777" title="Różowy" aria-label="Różowy" style="background:#db2777;"></button>
             <button class="color-swatch" data-color="#78350f" title="Brązowy" aria-label="Brązowy" style="background:#78350f;"></button>
             <button class="color-swatch" data-color="#b45309" title="Bursztynowy" aria-label="Bursztynowy" style="background:#b45309;"></button>
@@ -320,6 +313,7 @@
             <button class="color-swatch" data-color="#fed7aa" title="Brzoskwiniowy" aria-label="Brzoskwiniowy" style="background:#fed7aa;"></button>
             <button class="color-swatch" data-color="#d9f99d" title="Jasnozielony" aria-label="Jasnozielony" style="background:#d9f99d;"></button>
           </div>
+          <div class="palette-hint">Klik: obrys · Shift lub PPM: wypełnienie</div>
         </div>
 
         <!-- Podgląd operacji na obrazie renderowany bezpośrednio na warstwie overlay -->
@@ -338,6 +332,7 @@
             <div id="image-gray-controls" class="img-gray-methods" role="group" aria-label="Metoda konwersji do skali szarości" hidden>
               <button type="button" class="img-gray-method active" data-gray-method="luma">Wagi</button>
               <button type="button" class="img-gray-method" data-gray-method="average">Średnia</button>
+              <button type="button" class="img-gray-method" data-gray-method="diff">Różnica</button>
             </div>
             <div class="img-preview-actions">
               <button type="button" id="btn-image-preview-apply" class="btn-full btn-primary" disabled>Zastosuj na obrazie</button>

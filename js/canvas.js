@@ -39,7 +39,7 @@ window.PaintCanvas = {
     });
 
     this.overlayCanvas = document.getElementById('canvas-overlay');
-    this.overlayCtx = this.overlayCanvas.getContext('2d');
+    this.overlayCtx = this.overlayCanvas.getContext('2d', { willReadFrequently: true });
 
     // v2: limit kroków ORAZ limit pamięci (64 MiB) — historia nie urośnie w nieskończoność
     this.history = new window.PaintHistory({ maxSteps: 30, maxBytes: 64 * 1024 * 1024 });

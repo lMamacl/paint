@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Testy Modułu PPM — GK Paint</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      --failure: #ef4444;
+      --primary: #3b82f6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      padding: 32px 16px;
+      display: flex;
+      justify-content: center;
+    }
+    .test-container {
+      width: 100%;
+      max-width: 800px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+    h1 { font-size: 1.5rem; margin-bottom: 8px; color: var(--text); display: flex; align-items: center; gap: 8px; }
+    p.desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; }
+    .summary-bar {
+      display: flex;
+      gap: 16px;
+      padding: 14px 18px;
+      background: #0f172a;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      margin-bottom: 20px;
+      align-items: center;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+    .badge-pass { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+    .badge-fail { background: rgba(239, 68, 68, 0.2); color: var(--failure); }
+    .badge-total { background: rgba(59, 130, 246, 0.2); color: var(--primary); }
+    .test-list { display: flex; flex-direction: column; gap: 8px; }
+    .test-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: #0f172a80;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+    .test-item.pass { border-left: 4px solid var(--success); }
+    .test-item.fail { border-left: 4px solid var(--failure); }
+    .test-name { font-weight: 500; }
+    .test-status { font-weight: 600; font-size: 0.8rem; text-transform: uppercase; }
+    .test-status.pass { color: var(--success); }
+    .test-status.fail { color: var(--failure); }
+    .btn-rerun {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-left: auto;
+    }
+    .btn-rerun:hover { filter: brightness(1.1); }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <h1>🧪 Testy Jednostkowe PPM (Wymóg 6)</h1>
+    <p class="desc">Automatyczna weryfikacja poprawności dekodowania, kodowania, separatorów, skalowania i odporności na błędy.</p>
+
+    <div class="summary-bar">
+      <span class="badge badge-total" id="badge-total">Wszystkie: 0</span>
+      <span class="badge badge-pass" id="badge-pass">Sukces: 0</span>
+      <span class="badge badge-fail" id="badge-fail">Błędy: 0</span>
+      <button class="btn-rerun" onclick="runAllTests()">Uruchom ponownie</button>
+    </div>
+
+    <div class="test-list" id="test-results"></div>
+  </div>
+
+  <script src="../js/ppm.js"></script>
+  <script>
+    function createBuffer(str) {
+      return new TextEncoder().encode(str).buffer;
+    }
+
+    const tests = [
+      {
+        name: 'P3: Poprawne parsowanie ASCII 2x2 z komentarzami i CRLF',
+        fn: () => {
+          const ppmText = "P3\r\n# Komentarz\r\n2 2\r\n255\r\n255 0 0 0 255 0\r\n0 0 255 255 255 255\r\n";
+          const res = window.PaintPPM.parse(createBuffer(ppmText));
+          if (res.type !== 'P3' || res.width !== 2 || res.height !== 2) throw new Error('Niepoprawne wymiary');
+          if (res.imageData.data[0] !== 255 || res.imageData.data[4 + 1] !== 255) throw new Error('Błędne piksele');
+        }
+      },
+      {
+        name: 'P6: Poprawne parsowanie binarne 2x1',
+        fn: () => {
+          const header = "P6\n2 1\n255\n";
+          const headerBytes = new TextEncoder().encode(header);
+          const rasterBytes = new Uint8Array([255, 128, 0, 0, 64, 128]);
+          const combined = new Uint8Array(headerBytes.length + rasterBytes.length);
+          combined.set(headerBytes, 0);
+          combined.set(rasterBytes, headerBytes.length);
+          const res = window.PaintPPM.parse(combined.buffer);
+          if (res.type !== 'P6' || res.imageData.data[0] !== 255 || res.imageData.data[1] !== 128) throw new Error('Błędne piksele');
+        }
+      },
+      {
+        name: 'P6 [Uwaga 2]: Separator spacja i dane rastrowe od bajtu 32, 9 lub 35 (#)',
+        fn: () => {
+          const header = "P6 1 1 255 ";
+          const headerBytes = new TextEncoder().encode(header);
+          const rasterBytes = new Uint8Array([32, 9, 35]);
+          const combined = new Uint8Array(headerBytes.length + rasterBytes.length);
+          combined.set(headerBytes, 0);
+          combined.set(rasterBytes, headerBytes.length);
+          const res = window.PaintPPM.parse(combined.buffer);
+          if (res.imageData.data[0] !== 32 || res.imageData.data[1] !== 9 || res.imageData.data[2] !== 35) {
+            throw new Error(`Zjedzono dane rastra: R=${res.imageData.data[0]}, G=${res.imageData.data[1]}, B=${res.imageData.data[2]}`);
+          }
+        }
+      },
+      {
+        name: 'P6 [Uwaga 2]: Komentarz inline po maxVal',
+        fn: () => {
+          const header = "P6\n1 1\n255 # komentarz inline\n";
+          const headerBytes = new TextEncoder().encode(header);
+          const rasterBytes = new Uint8Array([10, 20, 30]);
+          const combined = new Uint8Array(headerBytes.length + rasterBytes.length);
+          combined.set(headerBytes, 0);
+          combined.set(rasterBytes, headerBytes.length);
+          const res = window.PaintPPM.parse(combined.buffer);
+          if (res.comments[0] !== 'komentarz inline' || res.imageData.data[0] !== 10) throw new Error('Błędny odczyt');
+        }
+      },
+      {
+        name: 'Małe obrazy [Uwaga 1]: Poprawne wymiary 3x2 i 1x1',
+        fn: () => {
+          const ppm = "P3\n3 2\n255\n1 2 3 4 5 6 7 8 9\n1 2 3 4 5 6 7 8 9\n";
+          const res = window.PaintPPM.parse(createBuffer(ppm));
+          if (res.width !== 3 || res.height !== 2) throw new Error('Złe wymiary');
+        }
+      },
+      {
+        name: 'Skalowanie maxVal: maxVal = 15 skalowane do 255',
+        fn: () => {
+          const ppm = "P3 1 1 15 15 0 7";
+          const res = window.PaintPPM.parse(createBuffer(ppm));
+          if (res.imageData.data[0] !== 255 || res.imageData.data[2] !== 119) throw new Error('Złe skalowanie');
+        }
+      },
+      {
+        name: '16-bit P6: próbki Big-Endian',
+        fn: () => {
+          const header = "P6\n1 1\n1000\n";
+          const headerBytes = new TextEncoder().encode(header);
+          const rasterBytes = new Uint8Array([3, 232, 1, 244, 0, 0]); // 1000, 500, 0
+          const combined = new Uint8Array(headerBytes.length + rasterBytes.length);
+          combined.set(headerBytes, 0);
+          combined.set(rasterBytes, headerBytes.length);
+          const res = window.PaintPPM.parse(combined.buffer);
+          if (res.imageData.data[0] !== 255 || res.imageData.data[1] !== 128) throw new Error('Złe 16-bit');
+        }
+      },
+      {
+        name: 'Walidacja [Uwaga 7]: Próbka > maxVal rzuca PPMError',
+        fn: () => {
+          let thrown = false;
+          try {
+            window.PaintPPM.parse(createBuffer("P3 1 1 255 260 0 0"));
+          } catch (e) {
+            thrown = true;
+          }
+          if (!thrown) throw new Error('Nie rzucono błędu dla próbki > maxVal');
+        }
+      },
+      {
+        name: 'Walidacja [Uwaga 11]: Plik P7\\n (3 bajty) zgłasza niepoprawną sygnaturę',
+        fn: () => {
+          let errText = '';
+          try {
+            window.PaintPPM.parse(createBuffer("P7\n"));
+          } catch (e) {
+            errText = e.message;
+          }
+          if (!errText.includes('Nieprawidłowa sygnatura')) throw new Error(`Oczekiwano sygnatury, otrzymano: ${errText}`);
+        }
+      },
+      {
+        name: 'Walidacja: Formaty P1 (PBM) i P2 (PGM)',
+        fn: () => {
+          let p1Caught = false;
+          try { window.PaintPPM.parse(createBuffer("P1 1 1 1")); } catch(e) { p1Caught = true; }
+          if (!p1Caught) throw new Error('Nie wykryto P1');
+        }
+      },
+      {
+        name: 'Zapis i odczyt (Roundtrip) [Uwaga 13]: encodeP6 / encodeP3 z własnym komentarzem',
+        fn: () => {
+          const img = new ImageData(2, 2);
+          img.data.set([255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255]);
+          const blobP6 = window.PaintPPM.encodeP6(img, { comment: 'TestGK' });
+          const reader = new FileReader();
+          return new Promise((resolve, reject) => {
+            reader.onload = () => {
+              try {
+                const res = window.PaintPPM.parse(reader.result);
+                if (res.comments[0] !== 'TestGK') throw new Error('Zły komentarz');
+                if (res.imageData.data[0] !== 255) throw new Error('Złe dane');
+                resolve();
+              } catch(e) { reject(e); }
+            };
+            reader.readAsArrayBuffer(blobP6);
+          });
+        }
+      }
+    ];
+
+    async function runAllTests() {
+      const resultsEl = document.getElementById('test-results');
+      resultsEl.innerHTML = '';
+      let passCount = 0;
+      let failCount = 0;
+
+      for (const t of tests) {
+        const item = document.createElement('div');
+        item.className = 'test-item';
+        try {
+          const res = t.fn();
+          if (res && res instanceof Promise) {
+            await res;
+          }
+          item.classList.add('pass');
+          item.innerHTML = `<span class="test-name">${t.name}</span><span class="test-status pass">PASS</span>`;
+          passCount++;
+        } catch (err) {
+          item.classList.add('fail');
+          item.innerHTML = `<span class="test-name">${t.name} — <small style="color:#ef4444">${err.message}</small></span><span class="test-status fail">FAIL</span>`;
+          failCount++;
+        }
+        resultsEl.appendChild(item);
+      }
+
+      document.getElementById('badge-total').textContent = `Wszystkie: ${tests.length}`;
+      document.getElementById('badge-pass').textContent = `Sukces: ${passCount}`;
+      document.getElementById('badge-fail').textContent = `Błędy: ${failCount}`;
+    }
+
+    window.addEventListener('DOMContentLoaded', runAllTests);
+  </script>
+</body>
+</html>

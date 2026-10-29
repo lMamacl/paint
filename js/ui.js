@@ -70,14 +70,12 @@ window.PaintUI = {
     const optLine = document.getElementById('opt-line');
     const optShape = document.getElementById('opt-shape');
     const optBucket = document.getElementById('opt-bucket');
-    const optEyedropper = document.getElementById('opt-eyedropper');
 
     if (optPencil) optPencil.style.display = tool === 'pencil' ? 'flex' : 'none';
     if (optEraser) optEraser.style.display = tool === 'eraser' ? 'flex' : 'none';
     if (optLine) optLine.style.display = tool === 'line' ? 'flex' : 'none';
     if (optShape) optShape.style.display = (tool === 'rect' || tool === 'ellipse') ? 'flex' : 'none';
     if (optBucket) optBucket.style.display = tool === 'bucket' ? 'flex' : 'none';
-    if (optEyedropper) optEyedropper.style.display = tool === 'eyedropper' ? 'flex' : 'none';
 
     // Synchronizacja stanu kontrolek w widocznym panelu
     this.syncDashStyleUI(window.PaintState.lineDash);
@@ -589,6 +587,12 @@ window.PaintUI = {
 
     overlay.addEventListener('pointerdown', (e) => {
       if (window.PaintCompareView && window.PaintCompareView.active) {
+        if (window.PaintState.currentTool === 'eyedropper') {
+          overlay.setPointerCapture(e.pointerId);
+          const coords = window.PaintCanvas.getCanvasCoords(e);
+          window.PaintTools.onPointerDown(e, coords);
+          return;
+        }
         e.preventDefault();
         window.PaintCompareView.notifyDrawBlocked();
         return;
@@ -617,11 +621,19 @@ window.PaintUI = {
 
       if (!window.PaintCompareView || !window.PaintCompareView.active) {
         window.PaintTools.onPointerMove(e, coords);
+      } else if (window.PaintState.currentTool === 'eyedropper' && window.PaintTools.isDrawing) {
+        window.PaintTools.onPointerMove(e, coords);
       }
     });
 
     window.addEventListener('pointerup', (e) => {
-      if (window.PaintCompareView && window.PaintCompareView.active) return;
+      if (window.PaintCompareView && window.PaintCompareView.active) {
+        if (window.PaintState.currentTool === 'eyedropper' && window.PaintTools.isDrawing) {
+          const coords = window.PaintCanvas.getCanvasCoords(e);
+          window.PaintTools.onPointerUp(e, coords);
+        }
+        return;
+      }
       const coords = window.PaintCanvas.getCanvasCoords(e);
       window.PaintTools.onPointerUp(e, coords);
     });
@@ -819,14 +831,39 @@ window.PaintUI = {
     if (!inBounds) return;
 
     const previewActive = window.PaintCompareView && window.PaintCompareView.active;
-    const ctx = previewActive ? window.PaintCanvas.overlayCtx : window.PaintCanvas.mainCtx;
-    const pixel = ctx.getImageData(x, y, 1, 1).data;
-    const [r, g, b] = pixel;
+    const compareView = window.PaintCompareView;
     const C = window.PaintColor;
+    const Ops = window.PaintImageOps;
+
+    let r, g, b;
+    if (previewActive && compareView && compareView.previewImage) {
+      const img = compareView.previewImage;
+      const idx = (y * img.width + x) * 4;
+      r = img.data[idx];
+      g = img.data[idx + 1];
+      b = img.data[idx + 2];
+    } else {
+      const pixel = window.PaintCanvas.mainCtx.getImageData(x, y, 1, 1).data;
+      r = pixel[0];
+      g = pixel[1];
+      b = pixel[2];
+    }
+
     const hex = C.rgbToHex(r, g, b).toUpperCase();
     const fmt = (value) => new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 1 }).format(value);
-    let values;
 
+    // Gdy aktywny jest podgląd szarości (wagi, średnia lub różnica) — pokazujemy porównanie obu wariantów!
+    if (previewActive && compareView && compareView.mode === 'gray') {
+      const orig = window.PaintCanvas.mainCtx.getImageData(x, y, 1, 1).data;
+      const luma = Ops.lumaOf(orig[0], orig[1], orig[2]);
+      const avg = Ops.averageOf(orig[0], orig[1], orig[2]);
+      const diff = Math.abs(luma - avg);
+      hintEl.textContent = `Piksel (${x}, ${y}) · wagi ${luma} · średnia ${avg} · Δ ${diff} · ${hex}`;
+      hintEl.title = hintEl.textContent;
+      return;
+    }
+
+    let values;
     if (this.colorFormat === 'hsv') {
       const hsv = C.rgbToHsv(r, g, b);
       values = `HSV ${fmt(hsv.h)}°, ${fmt(hsv.s * 100)}%, ${fmt(hsv.v * 100)}%`;

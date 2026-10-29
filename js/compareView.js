@@ -1,4 +1,4 @@
-﻿/**
+/**
  * js/compareView.js
  * Podgląd nieniszczących operacji obrazu na warstwie overlay nad dokumentem.
  */
@@ -58,7 +58,7 @@ window.PaintCompareView = {
 
   showGrayMethod(method) {
     this.mode = 'gray';
-    this.grayMethod = method === 'average' ? 'average' : 'luma';
+    this.grayMethod = (method === 'average' || method === 'diff') ? method : 'luma';
     this.channel = null;
     this.renderPreview();
   },
@@ -69,10 +69,22 @@ window.PaintCompareView = {
     const Ops = window.PaintImageOps;
 
     if (this.mode === 'gray') {
-      this.kind = this.grayMethod === 'average' ? 'gray-average' : 'gray-luma';
-      this.previewImage = this.grayMethod === 'average'
-        ? Ops.grayscaleAverage(source)
-        : Ops.grayscaleLuma(source);
+      if (this.grayMethod === 'average') {
+        this.kind = 'gray-average';
+        this.previewImage = Ops.grayscaleAverage(source);
+      } else if (this.grayMethod === 'diff') {
+        this.kind = 'gray-diff';
+        this.previewImage = Ops.differenceMap(source, 1);
+        if (window.PaintUI && window.PaintUI.showToast) {
+          const stats = Ops.compareGrayscales(source);
+          window.PaintUI.showToast(
+            `Różnica: śr. |Δ| = ${stats.meanAbsDiff.toFixed(1)}, max Δ = ${stats.maxDiff}, różne: ${stats.differingPercent.toFixed(1)}%`
+          );
+        }
+      } else {
+        this.kind = 'gray-luma';
+        this.previewImage = Ops.grayscaleLuma(source);
+      }
     } else if (this.channel) {
       this.kind = `channel-${this.channel}`;
       this.previewImage = Ops.extractChannel(source, this.channel, 'color');
@@ -132,6 +144,7 @@ window.PaintCompareView = {
   label() {
     if (this.kind === 'gray-luma') return 'skala szarości (wagi)';
     if (this.kind === 'gray-average') return 'skala szarości (średnia)';
+    if (this.kind === 'gray-diff') return 'mapa różnicy (|wagi − średnia|)';
     if (this.channel) return `kanał ${this.channel.toUpperCase()} w kolorze`;
     return 'kolor';
   },

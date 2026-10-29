@@ -239,11 +239,21 @@ window.PaintTools = {
     const y = Math.floor(coords.y);
     if (x < 0 || y < 0 || x >= mainCanvas.width || y >= mainCanvas.height) return false;
 
-    const d = mainCtx.getImageData(x, y, 1, 1).data;
-    let r = d[0];
-    let g = d[1];
-    let b = d[2];
-    const a = d[3];
+    let r, g, b, a;
+    if (window.PaintCompareView && window.PaintCompareView.active && window.PaintCompareView.previewImage) {
+      const img = window.PaintCompareView.previewImage;
+      const idx = (y * img.width + x) * 4;
+      r = img.data[idx];
+      g = img.data[idx + 1];
+      b = img.data[idx + 2];
+      a = img.data[idx + 3];
+    } else {
+      const d = mainCtx.getImageData(x, y, 1, 1).data;
+      r = d[0];
+      g = d[1];
+      b = d[2];
+      a = d[3];
+    }
     if (a < 255) {
       const alpha = a / 255;
       r = Math.round(r * alpha + 255 * (1 - alpha));
