@@ -1287,8 +1287,10 @@ input[type="range"].cm-range:focus-visible {
 
 .img-preview-modes,
 .img-channel-buttons,
+.adj-ops,
 .img-gray-methods,
-.img-preview-actions {
+.img-preview-actions,
+.adj-actions {
   display: grid;
   gap: 6px;
 }
@@ -1337,12 +1339,14 @@ input[type="range"].cm-range:focus-visible {
 
 .img-preview-mode:focus-visible,
 .img-gray-method:focus-visible,
-.img-channel-buttons .btn-mini:focus-visible {
+.img-channel-buttons .btn-mini:focus-visible,
+.adj-ops .btn-mini:focus-visible {
   outline: 2px solid var(--accent-hover);
   outline-offset: 1px;
 }
 
-.img-channel-buttons {
+.img-channel-buttons,
+.adj-ops {
   grid-template-columns: repeat(3, 1fr);
 }
 
@@ -1351,18 +1355,21 @@ input[type="range"].cm-range:focus-visible {
   display: none;
 }
 
-.img-channel-buttons .btn-mini {
+.img-channel-buttons .btn-mini,
+.adj-ops .btn-mini {
   width: auto;
   height: 28px;
 }
 
-.img-channel-buttons .btn-mini.active {
+.img-channel-buttons .btn-mini.active,
+.adj-ops .btn-mini.active {
   border-color: var(--accent-primary);
   background: var(--accent-active-bg);
   color: var(--accent-hover);
 }
 
-.img-preview-actions {
+.img-preview-actions,
+.adj-actions {
   grid-template-columns: 1fr 1fr;
   margin-top: 4px;
 }
@@ -1391,8 +1398,83 @@ input[type="range"].cm-range:focus-visible {
   text-overflow: ellipsis;
 }
 
-#btn-image-preview-apply {
+#btn-image-preview-apply,
+#btn-adj-apply {
   box-shadow: none;
+}
+
+/* Korekcje obrazu (Ćwiczenie 4) */
+.adj-controls {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.adj-controls[hidden],
+.adj-slider-box[hidden] {
+  display: none;
+}
+
+.adj-slider-box {
+  display: grid;
+  gap: 6px;
+}
+
+.adj-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.adj-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+input[type="range"].adj-range {
+  width: 100%;
+}
+
+.adj-scale {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.adj-reset {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.adj-reset:hover {
+  color: var(--text-main);
+}
+
+.adj-reset:focus-visible {
+  outline: 2px solid var(--accent-hover);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.adj-formula {
+  min-height: 3.6em;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .modal-card-color {

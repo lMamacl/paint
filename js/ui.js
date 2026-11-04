@@ -31,6 +31,9 @@ window.PaintUI = {
     // Ćwiczenie 3: panel modeli barw i okno operacji na obrazie
     if (window.PaintColorPanel) window.PaintColorPanel.init();
     if (window.PaintCompareView) window.PaintCompareView.init();
+
+    // Ćwiczenie 4: korekcje (jasność, kontrast, gamma, próg, negatyw) na wspólnej sesji podglądu
+    if (window.PaintAdjustments) window.PaintAdjustments.init();
   },
 
   /**
@@ -859,6 +862,17 @@ window.PaintUI = {
       const avg = Ops.averageOf(orig[0], orig[1], orig[2]);
       const diff = Math.abs(luma - avg);
       hintEl.textContent = `Piksel (${x}, ${y}) · wagi ${luma} · średnia ${avg} · Δ ${diff} · ${hex}`;
+      hintEl.title = hintEl.textContent;
+      return;
+    }
+
+    // Gdy aktywna jest korekcja (Ćwiczenie 4) — pokazujemy wartość piksela przed i po przekształceniu.
+    if (previewActive && compareView && compareView.mode === 'adjust') {
+      const base = compareView.baseImage;
+      const orig = base
+        ? [base.data[(y * base.width + x) * 4], base.data[(y * base.width + x) * 4 + 1], base.data[(y * base.width + x) * 4 + 2]]
+        : Array.from(window.PaintCanvas.mainCtx.getImageData(x, y, 1, 1).data).slice(0, 3);
+      hintEl.textContent = `Piksel (${x}, ${y}) · RGB ${orig[0]}, ${orig[1]}, ${orig[2]} → ${r}, ${g}, ${b} · ${hex}`;
       hintEl.title = hintEl.textContent;
       return;
     }

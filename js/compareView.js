@@ -1,6 +1,12 @@
 /**
  * js/compareView.js
  * Podgląd nieniszczących operacji obrazu na warstwie overlay nad dokumentem.
+ *
+ * Jedna sesja podglądu naraz. Źródłem obrazu może być:
+ *  - tryb 'color' / 'gray': kanały R, G, B oraz skala szarości (Ćwiczenie 3, ta klasa liczy je sama),
+ *  - tryb 'adjust': korekcje z Ćwiczenia 4 — obraz liczy js/adjustments.js i przekazuje go
+ *    metodą showImage(); zatwierdzanie, anulowanie i unieważnianie podglądu jest wspólne.
+ * Każda zmiana stanu sesji wysyła zdarzenie paint:previewstate { active, mode }.
  */
 window.PaintCompareView = {
   mode: 'color',
@@ -9,6 +15,8 @@ window.PaintCompareView = {
   active: false,
   kind: null,
   previewImage: null,
+  baseImage: null,   // opcjonalny snapshot dokumentu sprzed podglądu (używany jako stan „przed” w historii)
+  adjustLabel: '',
 
   init() {
     document.querySelectorAll('[data-image-mode]').forEach((button) => {
@@ -99,11 +107,30 @@ window.PaintCompareView = {
     if (window.PaintUI) window.PaintUI.refreshPixelReadout();
   },
 
+  /**
+   * Pokazuje na overlay gotowy obraz policzony na zewnątrz (korekcje, Ćwiczenie 4).
+   * @param {ImageData} image  wynik przekształcenia (taki sam rozmiar jak dokument)
+   * @param {string} label     nazwa operacji do komunikatu po zastosowaniu
+   * @param {ImageData} [base] snapshot dokumentu sprzed podglądu (oszczędza ponowny odczyt przy Zastosuj)
+   */
+  showImage(image, label, base) {
+    this.mode = 'adjust';
+    this.channel = null;
+    this.kind = 'adjust';
+    this.adjustLabel = label;
+    this.previewImage = image;
+    this.baseImage = base || null;
+    this.active = true;
+    window.PaintCanvas.overlayCtx.putImageData(image, 0, 0);
+    this.updateControls();
+    if (window.PaintUI) window.PaintUI.refreshPixelReadout();
+  },
+
   apply() {
     if (!this.active || !this.previewImage) return;
     const { mainCanvas, mainCtx, history } = window.PaintCanvas;
     const full = window.PaintRect.full(mainCanvas.width, mainCanvas.height);
-    history.begin(mainCtx, full);
+    history.begin(mainCtx, full, this.baseImage);
     mainCtx.putImageData(this.previewImage, 0, 0);
     const changed = history.commit(mainCtx);
     const label = this.label();
@@ -129,6 +156,7 @@ window.PaintCompareView = {
     this.active = false;
     this.kind = null;
     this.previewImage = null;
+    this.baseImage = null;
     window.PaintCanvas.clearOverlay();
     this.updateControls();
     if (window.PaintUI) window.PaintUI.refreshPixelReadout();
@@ -145,6 +173,7 @@ window.PaintCompareView = {
     if (this.kind === 'gray-luma') return 'skala szarości (wagi)';
     if (this.kind === 'gray-average') return 'skala szarości (średnia)';
     if (this.kind === 'gray-diff') return 'mapa różnicy (|wagi − średnia|)';
+    if (this.kind === 'adjust') return this.adjustLabel;
     if (this.channel) return `kanał ${this.channel.toUpperCase()} w kolorze`;
     return 'kolor';
   },
@@ -154,8 +183,9 @@ window.PaintCompareView = {
     const cancelButton = document.getElementById('btn-image-preview-cancel');
     const channelControls = document.getElementById('image-channel-controls');
     const grayControls = document.getElementById('image-gray-controls');
-    if (applyButton) applyButton.disabled = !this.active;
-    if (cancelButton) cancelButton.disabled = !this.active;
+    const ownSession = this.active && this.mode !== 'adjust'; // korekcje mają własne przyciski
+    if (applyButton) applyButton.disabled = !ownSession;
+    if (cancelButton) cancelButton.disabled = !ownSession;
     if (channelControls) channelControls.hidden = this.mode !== 'color';
     if (grayControls) grayControls.hidden = this.mode !== 'gray';
 
@@ -175,5 +205,8 @@ window.PaintCompareView = {
       button.setAttribute('aria-pressed', String(selected));
     });
 
+    window.dispatchEvent(new CustomEvent('paint:previewstate', {
+      detail: { active: this.active, mode: this.mode }
+    }));
   }
 };

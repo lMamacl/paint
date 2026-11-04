@@ -341,6 +341,38 @@
           </div>
         </div>
 
+        <!-- Korekcje obrazu (Ćwiczenie 4): przekształcenia punktowe z podglądem na żywo -->
+        <div class="sidebar-section" id="section-adjustments">
+          <div class="sidebar-header">Korekcje</div>
+          <div class="adj-ops" role="group" aria-label="Rodzaj korekcji">
+            <button type="button" class="btn-mini" data-adjust-op="brightness" title="Jasność: v + b">Jasność</button>
+            <button type="button" class="btn-mini" data-adjust-op="contrast" title="Kontrast: (v − 128)·k + 128">Kontrast</button>
+            <button type="button" class="btn-mini" data-adjust-op="gamma" title="Gamma: 255·(v/255)^(1/γ)">Gamma</button>
+            <button type="button" class="btn-mini" data-adjust-op="threshold" title="Progowanie (po skali szarości)">Próg</button>
+            <button type="button" class="btn-mini" data-adjust-op="invert" title="Negatyw: 255 − v">Negatyw</button>
+          </div>
+
+          <div id="adj-controls" class="adj-controls" hidden>
+            <div id="adj-slider-box" class="adj-slider-box">
+              <div class="adj-row">
+                <label id="adj-label" class="adj-label" for="adj-slider">Jasność</label>
+                <input type="number" id="adj-number" class="input-number cm-number" step="any" aria-label="Wartość korekcji">
+              </div>
+              <input type="range" id="adj-slider" class="adj-range" aria-label="Suwak korekcji">
+              <div class="adj-scale">
+                <span id="adj-min"></span>
+                <button type="button" id="btn-adj-reset" class="adj-reset" title="Przywróć wartość domyślną (brak zmiany)">Reset</button>
+                <span id="adj-max"></span>
+              </div>
+            </div>
+            <div id="adj-formula" class="adj-formula"></div>
+            <div class="adj-actions">
+              <button type="button" id="btn-adj-apply" class="btn-full btn-primary" disabled>Zastosuj</button>
+              <button type="button" id="btn-adj-cancel" class="btn-full" disabled>Anuluj</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Sekcja zmiany rozmiaru kanwy -->
         <div class="sidebar-section">
           <div class="sidebar-header">Rozmiar kanwy</div>
@@ -637,10 +669,12 @@
   <script src="js/ppm.js"></script>
   <script src="js/colorModels.js"></script>
   <script src="js/imageOps.js"></script>
+  <script src="js/pointOps.js"></script>
   <script src="js/tools.js"></script>
   <script src="js/fileActions.js"></script>
   <script src="js/colorPanel.js"></script>
   <script src="js/compareView.js"></script>
+  <script src="js/adjustments.js"></script>
   <script src="js/ui.js"></script>
   <script src="app.js"></script>
 </body>
