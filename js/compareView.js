@@ -4,9 +4,13 @@
  *
  * Jedna sesja podglądu naraz. Źródłem obrazu może być:
  *  - tryb 'color' / 'gray': kanały R, G, B oraz skala szarości (Ćwiczenie 3, ta klasa liczy je sama),
- *  - tryb 'adjust': korekcje z Ćwiczenia 4 — obraz liczy js/adjustments.js i przekazuje go
- *    metodą showImage(); zatwierdzanie, anulowanie i unieważnianie podglądu jest wspólne.
- * Każda zmiana stanu sesji wysyła zdarzenie paint:previewstate { active, mode }.
+ *  - tryb 'adjust': obraz policzony przez inny moduł i przekazany metodą showImage() razem z nazwą
+ *    właściciela sesji (owner): 'corrections' — js/adjustments.js (Ćwiczenie 4),
+ *    'filters' — js/filterPanel.js (Ćwiczenie 5).
+ * Zatwierdzanie („Zastosuj”), anulowanie i unieważnianie podglądu są wspólne dla wszystkich źródeł:
+ * jeden pasek #preview-bar na dole panelu bocznego, widoczny tylko podczas podglądu.
+ * Każda zmiana stanu sesji wysyła zdarzenie paint:previewstate { active, mode, owner } — moduł,
+ * który nie jest właścicielem sesji, sprząta swoje kontrolki.
  */
 window.PaintCompareView = {
   mode: 'color',
@@ -17,6 +21,7 @@ window.PaintCompareView = {
   previewImage: null,
   baseImage: null,   // opcjonalny snapshot dokumentu sprzed podglądu (używany jako stan „przed” w historii)
   adjustLabel: '',
+  owner: null,       // właściciel sesji podglądu przekazanej przez showImage() ('corrections' | 'filters')
 
   init() {
     document.querySelectorAll('[data-image-mode]').forEach((button) => {
@@ -102,6 +107,7 @@ window.PaintCompareView = {
     }
 
     this.active = true;
+    this.owner = null; // podgląd kanałów i szarości liczy ta klasa — nie ma zewnętrznego właściciela
     overlayCtx.putImageData(this.previewImage, 0, 0);
     this.updateControls();
     if (window.PaintUI) window.PaintUI.refreshPixelReadout();
@@ -112,11 +118,13 @@ window.PaintCompareView = {
    * @param {ImageData} image  wynik przekształcenia (taki sam rozmiar jak dokument)
    * @param {string} label     nazwa operacji do komunikatu po zastosowaniu
    * @param {ImageData} [base] snapshot dokumentu sprzed podglądu (oszczędza ponowny odczyt przy Zastosuj)
+   * @param {string} [owner]   nazwa modułu, który jest właścicielem sesji (patrz opis pliku)
    */
-  showImage(image, label, base) {
+  showImage(image, label, base, owner) {
     this.mode = 'adjust';
     this.channel = null;
     this.kind = 'adjust';
+    this.owner = owner || 'external';
     this.adjustLabel = label;
     this.previewImage = image;
     this.baseImage = base || null;
@@ -155,6 +163,7 @@ window.PaintCompareView = {
   clearPreview() {
     this.active = false;
     this.kind = null;
+    this.owner = null;
     this.previewImage = null;
     this.baseImage = null;
     window.PaintCanvas.clearOverlay();
@@ -183,9 +192,12 @@ window.PaintCompareView = {
     const cancelButton = document.getElementById('btn-image-preview-cancel');
     const channelControls = document.getElementById('image-channel-controls');
     const grayControls = document.getElementById('image-gray-controls');
-    const ownSession = this.active && this.mode !== 'adjust'; // korekcje mają własne przyciski
-    if (applyButton) applyButton.disabled = !ownSession;
-    if (cancelButton) cancelButton.disabled = !ownSession;
+    const bar = document.getElementById('preview-bar');
+    const barLabel = document.getElementById('preview-bar-label');
+    if (applyButton) applyButton.disabled = !this.active;
+    if (cancelButton) cancelButton.disabled = !this.active;
+    if (bar) bar.hidden = !this.active;
+    if (barLabel) barLabel.textContent = this.active ? `Podgląd: ${this.label()}` : '';
     if (channelControls) channelControls.hidden = this.mode !== 'color';
     if (grayControls) grayControls.hidden = this.mode !== 'gray';
 
@@ -206,7 +218,7 @@ window.PaintCompareView = {
     });
 
     window.dispatchEvent(new CustomEvent('paint:previewstate', {
-      detail: { active: this.active, mode: this.mode }
+      detail: { active: this.active, mode: this.mode, owner: this.owner }
     }));
   }
 };

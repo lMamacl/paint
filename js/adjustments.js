@@ -8,7 +8,8 @@
  *  - ten plik          — wybór operacji, suwak i pole liczbowe, planowanie przeliczeń,
  *  - js/compareView.js — wspólna sesja podglądu na overlay: pokazanie obrazu (showImage),
  *                        „Zastosuj” (jeden krok historii), „Anuluj” i unieważnianie podglądu
- *                        (zmiana rozmiaru, Cofnij/Ponów, Nowy, Otwórz, Esc).
+ *                        (zmiana rozmiaru, Cofnij/Ponów, Nowy, Otwórz, Esc). Przyciski Zastosuj
+ *                        i Anuluj są wspólne: pasek #preview-bar na dole panelu bocznego.
  *
  * PODGLĄD NA ŻYWO: źródło (kopia dokumentu) jest pobierane RAZ, przy wyborze operacji.
  * Każde przesunięcie suwaka tylko przelicza tę kopię i rysuje wynik na overlay — dokument
@@ -16,7 +17,7 @@
  * requestAnimationFrame (najwyżej jedno na klatkę), więc szybkie ruchy suwakiem nie blokują UI.
  *
  * Reaguje na: kliknięcia przycisków [data-adjust-op], suwak #adj-slider, pole #adj-number,
- * przyciski Reset / Zastosuj / Anuluj oraz zdarzenie paint:previewstate (koniec sesji z zewnątrz).
+ * przycisk Reset oraz zdarzenie paint:previewstate (koniec sesji albo sesja innego właściciela).
  */
 window.PaintAdjustments = {
   /**
@@ -68,9 +69,7 @@ window.PaintAdjustments = {
       min: document.getElementById('adj-min'),
       max: document.getElementById('adj-max'),
       reset: document.getElementById('btn-adj-reset'),
-      formula: document.getElementById('adj-formula'),
-      apply: document.getElementById('btn-adj-apply'),
-      cancel: document.getElementById('btn-adj-cancel')
+      formula: document.getElementById('adj-formula')
     };
     if (!this.els.controls) return;
 
@@ -91,9 +90,6 @@ window.PaintAdjustments = {
       if (!this.op) return;
       this.setValue(this.OPS[this.op].def, 'reset');
     });
-    this.els.apply.addEventListener('click', () => window.PaintCompareView.apply());
-    this.els.cancel.addEventListener('click', () => window.PaintCompareView.cancel());
-
     // koniec sesji podglądu z zewnątrz (Esc, Cofnij, zmiana rozmiaru, inny podgląd) → sprzątanie
     window.addEventListener('paint:previewstate', (e) => this.onPreviewState(e.detail));
     this.reset();
@@ -162,7 +158,7 @@ window.PaintAdjustments = {
     if (!this.op || !this.source) return;
     const def = this.OPS[this.op];
     const image = def.run(this.source, this.value);
-    window.PaintCompareView.showImage(image, this.describe(), this.source);
+    window.PaintCompareView.showImage(image, this.describe(), this.source, 'corrections');
   },
 
   /** Nazwa operacji z wartością, np. „Jasność +40”, „Kontrast ×1,50”, „Próg 128”. */
@@ -221,15 +217,11 @@ window.PaintAdjustments = {
       button.classList.remove('active');
       button.setAttribute('aria-pressed', 'false');
     });
-    this.els.apply.disabled = true;
-    this.els.cancel.disabled = true;
   },
 
   /** Reakcja na zmianę sesji podglądu: gdy to już nie nasza sesja, sprzątamy. */
   onPreviewState(detail) {
-    const own = detail.active && detail.mode === 'adjust';
+    const own = detail.active && detail.owner === 'corrections';
     if (!own && this.op) this.reset();
-    this.els.apply.disabled = !own;
-    this.els.cancel.disabled = !own;
   }
 };

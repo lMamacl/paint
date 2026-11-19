@@ -1289,8 +1289,7 @@ input[type="range"].cm-range:focus-visible {
 .img-channel-buttons,
 .adj-ops,
 .img-gray-methods,
-.img-preview-actions,
-.adj-actions {
+.img-preview-actions {
   display: grid;
   gap: 6px;
 }
@@ -1368,10 +1367,8 @@ input[type="range"].cm-range:focus-visible {
   color: var(--accent-hover);
 }
 
-.img-preview-actions,
-.adj-actions {
+.img-preview-actions {
   grid-template-columns: 1fr 1fr;
-  margin-top: 4px;
 }
 
 .status-color-format-label {
@@ -1398,9 +1395,94 @@ input[type="range"].cm-range:focus-visible {
   text-overflow: ellipsis;
 }
 
-#btn-image-preview-apply,
-#btn-adj-apply {
+#btn-image-preview-apply {
   box-shadow: none;
+}
+
+/* Wspólny pasek zatwierdzania podglądu: przyklejony do dołu panelu bocznego */
+.preview-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin-top: auto;
+  padding: 10px 16px 12px;
+  background-color: var(--bg-panel);
+  border-top: 1px solid var(--accent-primary);
+  box-shadow: 0 -8px 16px rgba(0, 0, 0, 0.35);
+}
+
+.preview-bar[hidden] {
+  display: none;
+}
+
+.preview-bar-label {
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Filtry obrazu (Ćwiczenie 5) */
+.flt-mask-box {
+  display: grid;
+  gap: 8px;
+}
+
+.flt-mask-box[hidden],
+#flt-sobel-box[hidden],
+#flt-noise-box[hidden] {
+  display: none;
+}
+
+.flt-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.input-number.flt-cell {
+  width: 100%;
+  padding: 6px 4px;
+  text-align: center;
+  font-family: ui-monospace, monospace;
+}
+
+.input-number.flt-cell[readonly] {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.flt-divisor-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.flt-divisor-row .flt-cell {
+  max-width: 80px;
+}
+
+.flt-divsum {
+  width: 28px;
+}
+
+.flt-divsum[hidden] {
+  display: none;
+}
+
+.flt-message {
+  min-height: 1.4em;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #fbbf24;
+}
+
+.flt-message:empty {
+  display: none;
 }
 
 /* Korekcje obrazu (Ćwiczenie 4) */

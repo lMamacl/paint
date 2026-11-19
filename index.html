@@ -334,10 +334,6 @@
               <button type="button" class="img-gray-method" data-gray-method="average">Średnia</button>
               <button type="button" class="img-gray-method" data-gray-method="diff">Różnica</button>
             </div>
-            <div class="img-preview-actions">
-              <button type="button" id="btn-image-preview-apply" class="btn-full btn-primary" disabled>Zastosuj na obrazie</button>
-              <button type="button" id="btn-image-preview-cancel" class="btn-full" disabled>Anuluj podgląd</button>
-            </div>
           </div>
         </div>
 
@@ -366,10 +362,63 @@
               </div>
             </div>
             <div id="adj-formula" class="adj-formula"></div>
-            <div class="adj-actions">
-              <button type="button" id="btn-adj-apply" class="btn-full btn-primary" disabled>Zastosuj</button>
-              <button type="button" id="btn-adj-cancel" class="btn-full" disabled>Anuluj</button>
+          </div>
+        </div>
+
+        <!-- Filtry obrazu (Ćwiczenie 5): filtracja z uwzględnieniem sąsiedztwa piksela -->
+        <div class="sidebar-section" id="section-filters">
+          <div class="sidebar-header">Filtry</div>
+          <div class="adj-ops" role="group" aria-label="Rodzaj filtru">
+            <button type="button" class="btn-mini" data-filter-op="mean" title="Splot 3×3: średnia z sąsiedztwa">Uśredniający</button>
+            <button type="button" class="btn-mini" data-filter-op="gauss" title="Splot 3×3: maska Gaussa">Gauss</button>
+            <button type="button" class="btn-mini" data-filter-op="median" title="Mediana z sąsiedztwa 3×3">Mediana</button>
+            <button type="button" class="btn-mini" data-filter-op="sharpen" title="Wyostrzanie maską Laplace’a (środek 5)">Wyostrzanie</button>
+            <button type="button" class="btn-mini" data-filter-op="sobel" title="Wykrywanie krawędzi operatorem Sobela">Sobel</button>
+            <button type="button" class="btn-mini" data-filter-op="custom" title="Własna maska 3×3 i dzielnik">Własna</button>
+            <button type="button" class="btn-mini" data-filter-op="noise" title="Szum „sól i pieprz”">Szum</button>
+          </div>
+
+          <div id="flt-controls" class="adj-controls" hidden>
+            <div id="flt-mask-box" class="flt-mask-box" hidden>
+              <div class="flt-grid" role="group" aria-label="Maska 3×3">
+                <input type="text" inputmode="decimal" id="flt-k0" class="input-number flt-cell" aria-label="Współczynnik maski: wiersz 1, kolumna 1">
+                <input type="text" inputmode="decimal" id="flt-k1" class="input-number flt-cell" aria-label="Współczynnik maski: wiersz 1, kolumna 2">
+                <input type="text" inputmode="decimal" id="flt-k2" class="input-number flt-cell" aria-label="Współczynnik maski: wiersz 1, kolumna 3">
+                <input type="text" inputmode="decimal" id="flt-k3" class="input-number flt-cell" aria-label="Współczynnik maski: wiersz 2, kolumna 1">
+                <input type="text" inputmode="decimal" id="flt-k4" class="input-number flt-cell" aria-label="Współczynnik maski: wiersz 2, kolumna 2">
+                <input type="text" inputmode="decimal" id="flt-k5" class="input-number flt-cell" aria-label="Współczynnik maski: wiersz 2, kolumna 3">
+                <input type="text" inputmode="decimal" id="flt-k6" class="input-number flt-cell" aria-label="Współczynnik maski: wiersz 3, kolumna 1">
+                <input type="text" inputmode="decimal" id="flt-k7" class="input-number flt-cell" aria-label="Współczynnik maski: wiersz 3, kolumna 2">
+                <input type="text" inputmode="decimal" id="flt-k8" class="input-number flt-cell" aria-label="Współczynnik maski: wiersz 3, kolumna 3">
+              </div>
+              <div class="flt-divisor-row">
+                <label class="adj-label" for="flt-divisor">Dzielnik</label>
+                <input type="text" inputmode="decimal" id="flt-divisor" class="input-number flt-cell" aria-label="Dzielnik maski">
+                <button type="button" id="btn-flt-divsum" class="btn-mini flt-divsum" title="Dzielnik = suma współczynników" hidden>Σ</button>
+              </div>
             </div>
+
+            <div id="flt-sobel-box" class="img-gray-methods" role="group" aria-label="Widok operatora Sobela" hidden>
+              <button type="button" class="img-gray-method active" data-sobel-view="magnitude" title="Moduł gradientu √(Gx² + Gy²)">|G|</button>
+              <button type="button" class="img-gray-method" data-sobel-view="gx" title="Pochodna pozioma (krawędzie pionowe)">|Gx|</button>
+              <button type="button" class="img-gray-method" data-sobel-view="gy" title="Pochodna pionowa (krawędzie poziome)">|Gy|</button>
+            </div>
+
+            <div id="flt-noise-box" class="adj-slider-box" hidden>
+              <div class="adj-row">
+                <label class="adj-label" for="flt-noise-slider">Natężenie (% pikseli)</label>
+                <input type="number" id="flt-noise-number" class="input-number cm-number" step="any" aria-label="Natężenie szumu w procentach">
+              </div>
+              <input type="range" id="flt-noise-slider" class="adj-range" aria-label="Suwak natężenia szumu">
+              <div class="adj-scale">
+                <span>0</span>
+                <button type="button" id="btn-flt-reseed" class="adj-reset" title="Wylosuj inny układ zaszumionych pikseli">Losuj ponownie</button>
+                <span>40</span>
+              </div>
+            </div>
+
+            <div id="flt-message" class="flt-message" role="status" aria-live="polite"></div>
+            <div id="flt-formula" class="adj-formula"></div>
           </div>
         </div>
 
@@ -387,6 +436,15 @@
             </div>
           </div>
           <button id="btn-apply-canvas-size" class="btn-full">Zmień rozmiar</button>
+        </div>
+
+        <!-- Wspólny pasek zatwierdzania podglądu (kanały, szarość, korekcje, filtry): widoczny tylko podczas podglądu -->
+        <div id="preview-bar" class="preview-bar" hidden>
+          <div id="preview-bar-label" class="preview-bar-label"></div>
+          <div class="img-preview-actions">
+            <button type="button" id="btn-image-preview-apply" class="btn-full btn-primary" disabled>Zastosuj</button>
+            <button type="button" id="btn-image-preview-cancel" class="btn-full" disabled>Anuluj</button>
+          </div>
         </div>
 
       </aside>
@@ -670,11 +728,13 @@
   <script src="js/colorModels.js"></script>
   <script src="js/imageOps.js"></script>
   <script src="js/pointOps.js"></script>
+  <script src="js/filters.js"></script>
   <script src="js/tools.js"></script>
   <script src="js/fileActions.js"></script>
   <script src="js/colorPanel.js"></script>
   <script src="js/compareView.js"></script>
   <script src="js/adjustments.js"></script>
+  <script src="js/filterPanel.js"></script>
   <script src="js/ui.js"></script>
   <script src="app.js"></script>
 </body>

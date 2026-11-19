@@ -34,6 +34,9 @@ window.PaintUI = {
 
     // Ćwiczenie 4: korekcje (jasność, kontrast, gamma, próg, negatyw) na wspólnej sesji podglądu
     if (window.PaintAdjustments) window.PaintAdjustments.init();
+
+    // Ćwiczenie 5: filtry (splot 3×3, mediana, Sobel, własna maska, szum) na wspólnej sesji podglądu
+    if (window.PaintFilterPanel) window.PaintFilterPanel.init();
   },
 
   /**
