@@ -37,6 +37,9 @@ window.PaintUI = {
 
     // Ćwiczenie 5: filtry (splot 3×3, mediana, Sobel, własna maska, szum) na wspólnej sesji podglądu
     if (window.PaintFilterPanel) window.PaintFilterPanel.init();
+
+    // Ćwiczenie 6: histogram, binaryzacja (ręczna, średnia, Otsu) i normalizacja
+    if (window.PaintHistogramPanel) window.PaintHistogramPanel.init();
   },
 
   /**

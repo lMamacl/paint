@@ -337,6 +337,57 @@
           </div>
         </div>
 
+        <!-- Histogram i binaryzacja (Ćwiczenie 6) -->
+        <div class="sidebar-section" id="section-histogram">
+          <div class="sidebar-header hist-header-row">
+            <span>Histogram i binaryzacja</span>
+            <button type="button" id="btn-hist-log" class="btn-mini hist-log-btn" title="Przełącz skalę liniową / logarytmiczną" aria-pressed="false">Log</button>
+          </div>
+
+          <div class="hist-channel-row" role="group" aria-label="Widok histogramu">
+            <button type="button" class="btn-mini active" data-hist-channel="gray" title="Histogram jasności">Jasność</button>
+            <button type="button" class="btn-mini" data-hist-channel="rgb" title="Wspólny histogram kanałów R, G i B">RGB</button>
+            <button type="button" class="btn-mini" data-hist-channel="r" title="Histogram kanału czerwonego">R</button>
+            <button type="button" class="btn-mini" data-hist-channel="g" title="Histogram kanału zielonego">G</button>
+            <button type="button" class="btn-mini" data-hist-channel="b" title="Histogram kanału niebieskiego">B</button>
+          </div>
+
+          <canvas id="hist-canvas" class="hist-canvas" aria-label="Wykres histogramu"></canvas>
+
+          <div id="hist-stats" class="hist-stats"></div>
+          <div id="hist-hover" class="hist-hover">Najedź na wykres, aby odczytać słupek.</div>
+
+          <div class="adj-ops hist-ops" role="group" aria-label="Operacje na histogramie">
+            <button type="button" class="btn-mini" data-hist-op="manual" title="Progowanie ręczne z linią na wykresie">Próg ręczny</button>
+            <button type="button" class="btn-mini" data-hist-op="auto" title="Automatyczny dobór progu: średnia i Otsu">Auto próg</button>
+            <button type="button" class="btn-mini" data-hist-op="stretch" title="Rozciąganie histogramu do 0–255">Rozciąganie</button>
+            <button type="button" class="btn-mini" data-hist-op="equalize" title="Wyrównywanie (equalizacja) histogramu">Wyrównanie</button>
+          </div>
+
+          <div id="hist-controls" class="adj-controls" hidden>
+            <div id="hist-manual-box" class="adj-slider-box" hidden>
+              <div class="adj-row">
+                <label class="adj-label" for="hist-thresh-slider">Próg (T)</label>
+                <input type="number" id="hist-thresh-number" class="input-number cm-number" min="0" max="255" step="1" value="128" aria-label="Wartość progu binaryzacji">
+              </div>
+              <input type="range" id="hist-thresh-slider" class="adj-range" min="0" max="255" step="1" value="128" aria-label="Suwak progu binaryzacji">
+              <div class="adj-scale">
+                <span>0</span>
+                <span>255</span>
+              </div>
+            </div>
+
+            <div id="hist-auto-box" class="hist-auto-box" hidden>
+              <div class="hist-auto-row" role="group" aria-label="Metoda automatycznego doboru progu">
+                <button type="button" class="btn-mini" data-hist-auto="mean">Średnia: <strong id="hist-auto-mean-val">–</strong></button>
+                <button type="button" class="btn-mini active" data-hist-auto="otsu">Otsu: <strong id="hist-auto-otsu-val">–</strong></button>
+              </div>
+            </div>
+
+            <div id="hist-formula" class="adj-formula"></div>
+          </div>
+        </div>
+
         <!-- Korekcje obrazu (Ćwiczenie 4): przekształcenia punktowe z podglądem na żywo -->
         <div class="sidebar-section" id="section-adjustments">
           <div class="sidebar-header">Korekcje</div>
@@ -735,6 +786,9 @@
   <script src="js/compareView.js"></script>
   <script src="js/adjustments.js"></script>
   <script src="js/filterPanel.js"></script>
+  <script src="js/histogramOps.js"></script>
+  <script src="js/histogramChart.js"></script>
+  <script src="js/histogramPanel.js"></script>
   <script src="js/ui.js"></script>
   <script src="app.js"></script>
 </body>
